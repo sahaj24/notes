@@ -5,14 +5,17 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 
 export async function POST(request: NextRequest) {
   try {
-    const { topic, template } = await request.json();
+    const { topic, template, pages } = await request.json();
 
     if (!topic) {
       return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
     }
 
+    // Validate pages parameter
+    const numPages = pages && pages >= 1 && pages <= 10 ? pages : 1;
+
     // Create a new prompt that asks for HTML/CSS output
-    const prompt = createHtmlPrompt(topic, template);
+    const prompt = createHtmlPrompt(topic, template, numPages);
 
     // Call Gemini API with retry logic
     const maxRetries = 3;
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
               temperature: 0.9, // Slightly more creative
               topK: 40,
               topP: 0.95,
-              maxOutputTokens: 8192, // Increased token limit for more content
+              maxOutputTokens: numPages > 1 ? 16384 : 8192, // Increased token limit for multi-page content
             },
           }),
         });
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function createHtmlPrompt(topic: string, template: string = 'creative'): string {
+function createHtmlPrompt(topic: string, template: string = 'creative', numPages: number = 1): string {
   // Template-specific styling variations
   const templateStyles = {
     creative: {
@@ -134,8 +137,21 @@ function createHtmlPrompt(topic: string, template: string = 'creative'): string 
     **🎯 HIGHEST PRIORITY - FOLLOW THESE EXACTLY:**
     1. **PRIMARY TOPIC:** "${topic}" - This is the MAIN subject. ALL content must be directly related to this topic. Do NOT deviate or add unrelated information.
     2. **MANDATORY TEMPLATE:** ${selectedTemplate.description} - ${selectedTemplate.emphasis} This template style is NON-NEGOTIABLE and must be applied throughout.
+    3. **PAGES REQUIREMENT:** Create exactly ${numPages} page${numPages > 1 ? 's' : ''} of content. Each page must continue naturally from the previous page, building upon the information presented earlier.
     
-    Your task is to generate a SINGLE, SELF-CONTAINED HTML document that creates beautiful visual notes specifically about: "${topic}".
+    Your task is to generate a SINGLE, SELF-CONTAINED HTML document that creates beautiful visual notes specifically about: "${topic}" across ${numPages} page${numPages > 1 ? 's' : ''}.
+    
+    ${numPages > 1 ? `**MULTI-PAGE REQUIREMENTS:**
+    - Each page should be a separate section that flows naturally from the previous
+    - Use clear visual breaks between pages (like page breaks or distinct sections)
+    - Each page should build upon and reference content from previous pages
+    - Maintain consistent styling and theme across all pages
+    - Include navigation or flow indicators if helpful
+    - CRITICAL: Distribute content EVENLY across all ${numPages} pages - each page must be equally full and dense
+    - Each page should contain roughly ${Math.round((400 * numPages) / numPages)}-${Math.round((600 * numPages) / numPages)} words of content
+    - Fill every page completely with no sparse or empty areas
+    - Balance visual elements and content blocks equally across all pages
+    ` : ''}
     
     The final output must be a **dense, beautiful, information collage**. The goal is to present information in a visually engaging, compact, and layered manner, as if it were cut and pasted into a physical scrapbook.
 
@@ -143,11 +159,13 @@ function createHtmlPrompt(topic: string, template: string = 'creative'): string 
     1.  **HTML ONLY:** Your entire response MUST be only the HTML code. Start with \`<!DOCTYPE html>\` and end with \`</html>\`. NO MARKDOWN, NO EXPLANATIONS.
     2.  **TOPIC ADHERENCE:** Every single piece of content must relate directly to "${topic}". Do not include generic examples or unrelated information.
     3.  **TEMPLATE CONSISTENCY:** Apply the "${selectedTemplate.description}" style throughout. This is mandatory.
-    4.  **DENSE, LAYERED COLLAGE - NO EMPTY SPACE:** This is the most important rule. The final note MUST look completely full and dense. The layout should be compact and interlocking. Use the 8-column grid and a mix of \`col-span\` and \`row-span\` classes to create a dynamic layout with items of different sizes and shapes. Some items should be tall (\`row-span-3\`, \`row-span-4\`), others short. Some wide, some narrow. This is how you will fill all the space. Use the \`.tape\` class to create a layered, scrapbook feel.
-    5.  **USE A VARIETY OF STYLES:** Do NOT wrap every single element in a colored box. Use a mix of styles: \`.section\` for main content, \`.sticky-note\` for callouts, \`.key-fact\` for small highlights, and \`.quote\` for citations. This variety is essential.
-    6.  **NO DIAGRAMS OR IMAGES:** Do NOT include any placeholders for diagrams or images. The ONLY exception is the specific, hand-drawn SVG arrow code provided below.
-    7.  **GENERATE RICH CONTENT:** Create at least 6-8 distinct sections of content, totaling 400-500 words, to ensure the collage is rich with information about "${topic}".
-    8.  **USE DECORATIVE ELEMENTS:** You MUST include decorative elements on EVERY page. This is mandatory. Use a mix of:
+    4.  **DENSE, LAYERED COLLAGE - NO EMPTY SPACE:** This is the most important rule. The final note MUST look completely full and dense with NO empty or sparse areas. The layout should be compact and interlocking. Use the 8-column grid and a mix of \`col-span\` and \`row-span\` classes to create a dynamic layout with items of different sizes and shapes. Some items should be tall (\`row-span-3\`, \`row-span-4\`), others short. Some wide, some narrow. Fill EVERY available space on each page. Use the \`.tape\` class to create a layered, scrapbook feel.
+    5.  **MAXIMUM CONTENT DENSITY:** Fill each page completely with rich, detailed content. Do NOT leave any section sparse or incomplete. Add more subsections, examples, details, and explanations to ensure full coverage of each page.
+    6.  **EVEN DISTRIBUTION:** Distribute content evenly across all pages. Each page should have roughly equal amounts of content and visual density. No page should be significantly lighter or heavier than others.
+    7.  **USE A VARIETY OF STYLES:** Do NOT wrap every single element in a colored box. Use a mix of styles: \`.section\` for main content, \`.sticky-note\` for callouts, \`.key-fact\` for small highlights, and \`.quote\` for citations. This variety is essential.
+    8.  **NO DIAGRAMS OR IMAGES:** Do NOT include any placeholders for diagrams or images. The ONLY exception is the specific, hand-drawn SVG arrow code provided below.
+    9.  **GENERATE RICH, ABUNDANT CONTENT:** Create at least 8-12 distinct sections of content per page, with detailed explanations, examples, and comprehensive coverage of "${topic}". Each page should be visually packed with information.
+    10. **USE DECORATIVE ELEMENTS:** You MUST include decorative elements on EVERY page. This is mandatory. Use a mix of:
         - At least one hand-drawn arrow to connect ideas.
         - At least one wavy underline on a key phrase.
         - At least one circled piece of text.
@@ -178,12 +196,38 @@ function createHtmlPrompt(topic: string, template: string = 'creative'): string 
         padding: 2.5rem;
         max-width: 1600px;  /* EVEN WIDER */
         margin: auto;
+        margin-bottom: 2rem; /* Space between pages */
         display: grid;
         grid-template-columns: repeat(8, 1fr); /* 8 columns for wide layout */
         grid-auto-rows: min-content;
         grid-auto-flow: dense; /* IMPORTANT: This will help fill empty spaces */
         gap: 1.25rem; /* Reduced gap for a tighter layout */
         position: relative; /* For tape positioning */
+    }
+    .page-break {
+        break-after: page;
+        margin-bottom: 3rem;
+    }
+    .page-header {
+        grid-column: 1 / -1;
+        text-align: center;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(240,240,240,0.8));
+        border-radius: 15px;
+        font-family: 'Gochi Hand', cursive;
+        font-size: 1.2rem;
+        color: #666;
+        transform: rotate(-0.5deg);
+    }
+    .page-continue {
+        grid-column: 1 / -1;
+        text-align: center;
+        margin: 1rem 0;
+        font-family: 'Caveat', cursive;
+        font-size: 1.1rem;
+        color: #888;
+        font-style: italic;
     }
     .tape {
         position: absolute;
@@ -333,16 +377,32 @@ function createHtmlPrompt(topic: string, template: string = 'creative'): string 
     - **Circled Text:** Wrap any text with \`<span class="circle-text">...\` to draw a circle around it.
     - **Annotations:** Add small side notes with \`<span class="annotation">...\` next to a word or phrase.
 
-    Now, generate the complete, self-contained HTML document for the topic: "${topic}".
+    Now, generate the complete, self-contained HTML document for the topic: "${topic}" with exactly ${numPages} page${numPages > 1 ? 's' : ''}.
+    
+    ${numPages > 1 ? `**📖 MULTI-PAGE STRUCTURE:**
+    - Create ${numPages} separate <div class="note-paper"> containers
+    - Each page should have a subtle page indicator (e.g., <div class="page-header">Page 1 of ${numPages}: [Page Title]</div>)
+    - Use <div class="page-continue">...continued from previous page...</div> at the start of pages 2+
+    - Each page should naturally continue the narrative/information from the previous page
+    - Reference earlier content when appropriate (e.g., "As mentioned on page 1...")
+    - Distribute content logically across pages (introduction → details → conclusion/examples)
+    - CRITICAL: Each page must be completely filled with content - no page should be sparse or less dense than others
+    - Balance the number of sections, sticky notes, key facts, and quotes evenly across all pages
+    - Each page should have 8-12 content blocks to ensure full coverage
+    ` : ''}
     
     **🚨 CRITICAL REMINDERS:**
     - The topic "${topic}" must be the SOLE focus of all content
     - The "${selectedTemplate.description}" template style must be applied consistently
-    - Follow the instructions precisely. Create a wide, dense, 8-column information collage with 400-500 words
+    - ${numPages > 1 ? `Create exactly ${numPages} pages with ${numPages * 500}-${numPages * 700} words total distributed EVENLY` : 'Create a wide, dense, 8-column information collage with 500-700 words'}
+    - MAXIMUM DENSITY: Fill every inch of every page with rich, detailed content
+    - EVEN DISTRIBUTION: Each page must have equal visual weight and content density
     - You must use a mix of column spans, row spans, and different content blocks (\`.section\`, \`.sticky-note\`, \`.key-fact\`)
     - Use the \`.tape\` element to create a layered scrapbook effect
     - Use colored backgrounds **only where necessary for emphasis**
     - **You must use arrows, wavy underlines, and circles**
     - ALL content must be directly related to "${topic}" - no generic examples or unrelated information
+    ${numPages > 1 ? `- Each page must build upon and reference previous pages naturally` : ''}
+    - NO EMPTY SPACES: Every page should be completely filled with content blocks
     `;
 }

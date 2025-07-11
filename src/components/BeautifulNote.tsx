@@ -31,6 +31,7 @@ export const BeautifulNote: React.FC = () => {
   const [exportFormat, setExportFormat] = useState<'html' | 'pdf' | 'image'>('html');
   const [isExporting, setIsExporting] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [pages, setPages] = useState<number>(1);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const templates: NoteTemplate[] = [
@@ -102,7 +103,8 @@ export const BeautifulNote: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           topic, 
-          template: selectedTemplate
+          template: selectedTemplate,
+          pages
         }),
       });
 
@@ -175,6 +177,7 @@ export const BeautifulNote: React.FC = () => {
   const resetToInput = () => {
     setCurrentStep('input');
     setTopic('');
+    setPages(1);
     setError(null);
     setNoteHtml(null);
   };
@@ -465,6 +468,38 @@ export const BeautifulNote: React.FC = () => {
                       ))}
                     </div>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Number of pages
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={pages}
+                      onChange={(e) => setPages(parseInt(e.target.value))}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      disabled={isLoading}
+                    />
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-gray-900 bg-gray-100 px-3 py-1 rounded-full min-w-[3rem] text-center">
+                        {pages}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        page{pages > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>Single page</span>
+                    <span>Multiple pages</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {pages > 1 ? `Each page will build upon the previous one with continuing content.` : 'A single comprehensive page with all the content.'}
+                  </p>
                 </div>
 
                 <div>
