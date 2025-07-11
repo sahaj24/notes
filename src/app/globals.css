@@ -1,15 +1,12 @@
 @import "tailwindcss";
 
+/* Import handwriting and creative fonts */
+@import url('https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Architects+Daughter&family=Caveat:wght@400;500;600;700&family=Permanent+Marker&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Gochi+Hand&display=swap');
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,4 +20,180 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Custom handwriting styles */
+.handwriting {
+  font-family: 'Kalam', cursive;
+}
+
+.handwriting-fancy {
+  font-family: 'Caveat', cursive;
+}
+
+.handwriting-marker {
+  font-family: 'Permanent Marker', cursive;
+}
+
+.handwriting-architect {
+  font-family: 'Architects Daughter', cursive;
+}
+
+.handwriting-gochi {
+  font-family: 'Gochi Hand', cursive;
+}
+
+/* Hand-drawn style elements */
+.hand-drawn-border {
+  border: 3px solid;
+  border-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M5,5 Q10,2 15,5 T25,5 T35,5 T45,5 T55,5 T65,5 T75,5 T85,5 Q90,2 95,5' fill='none' stroke='%23000' stroke-width='2'/></svg>") 1;
+}
+
+/* Wavy underlines */
+.wavy-underline {
+  position: relative;
+}
+
+.wavy-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -5px;
+  width: 100%;
+  height: 3px;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10'><path d='M0,5 Q5,0 10,5 T20,5 T30,5 T40,5 T50,5 T60,5 T70,5 T80,5 T90,5 T100,5' fill='none' stroke='%23ff6b6b' stroke-width='2'/></svg>") repeat-x;
+}
+
+/* Highlighter effect */
+.highlight {
+  background: linear-gradient(104deg, rgba(255, 255, 0, 0.4) 0.9%, transparent 2.4%), 
+              linear-gradient(104deg, rgba(255, 107, 107, 0.3) 0.9%, transparent 2.4%);
+  background-size: 30px 1em;
+  background-position: 0 0.5em;
+  background-repeat: repeat-x;
+}
+
+/* Doodle animations */
+@keyframes doodle {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(2deg) scale(1.05); }
+  50% { transform: rotate(-2deg) scale(1); }
+  75% { transform: rotate(1deg) scale(0.95); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.doodle-animation {
+  animation: doodle 3s ease-in-out infinite;
+}
+
+/* Paper texture */
+.paper-texture {
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%);
+  background-size: 400px 400px;
+}
+
+/* Sketch style shadows */
+.sketch-shadow {
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1)) 
+          drop-shadow(-1px -1px 2px rgba(255, 255, 255, 0.8));
+}
+
+/* Marker text effect */
+.marker-text {
+  text-shadow: 
+    2px 2px 0px rgba(255, 255, 255, 0.8),
+    -2px -2px 0px rgba(0, 0, 0, 0.1);
+}
+
+/* Notebook lines */
+.notebook-lines {
+  background-image: 
+    linear-gradient(90deg, #ff6b6b 0px, #ff6b6b 1px, transparent 1px, transparent 40px),
+    linear-gradient(#e8f4f8 0px, #e8f4f8 24px, #a8d8ea 24px, #a8d8ea 26px);
+  background-size: 40px 26px;
+}
+
+/* Animated elements */
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
+}
+
+/* Float animations */
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: float 4s ease-in-out infinite 2s;
+}
+
+/* Draw animation for SVG paths */
+.animate-draw {
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+  animation: draw 2s ease-in-out forwards;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Organic shapes */
+.organic-shape {
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  animation: organic-morph 8s ease-in-out infinite;
+}
+
+@keyframes organic-morph {
+  0%, 100% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }
+  25% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+  75% { border-radius: 40% 60% 60% 40% / 40% 50% 60% 50%; }
+}
+
+/* Watercolor effect */
+.watercolor {
+  background: radial-gradient(circle at 30% 30%, rgba(255, 107, 107, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 70% 70%, rgba(78, 205, 196, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 50% 50%, rgba(69, 183, 209, 0.3) 0%, transparent 50%);
+  animation: watercolor-flow 10s ease-in-out infinite;
+}
+
+@keyframes watercolor-flow {
+  0%, 100% { 
+    background-position: 0% 0%, 100% 100%, 50% 50%;
+    background-size: 200% 200%, 200% 200%, 200% 200%;
+  }
+  50% { 
+    background-position: 100% 100%, 0% 0%, 25% 75%;
+    background-size: 150% 150%, 250% 250%, 180% 180%;
+  }
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, #ff5252, #26a69a);
 }
