@@ -7,6 +7,7 @@ export const BeautifulNote: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [noteHtml, setNoteHtml] = useState<string | null>(null);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
 
   const handleGenerateNote = async (topic: string) => {
     if (!topic) return;
@@ -46,9 +47,9 @@ export const BeautifulNote: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-screen flex bg-gray-100">
+    <div className="w-full h-screen bg-gray-100 relative">
       {/* Sidebar for input */}
-      <div className="w-96 h-full bg-white shadow-2xl p-8 flex flex-col z-10">
+      <div className={`absolute top-0 left-0 h-full bg-white shadow-2xl p-8 flex flex-col z-20 transition-transform duration-300 ease-in-out ${sidebarVisible ? 'translate-x-0' : '-translate-x-full'}`} style={{width: '24rem'}}>
         <h1 className="text-3xl font-bold text-gray-800 font-serif mb-2">AI Note Generator</h1>
         <p className="text-md text-gray-600 mb-6">Enter a topic and watch the magic happen.</p>
         
@@ -80,8 +81,19 @@ export const BeautifulNote: React.FC = () => {
         </div>
       </div>
 
+      {/* Toggle Button */}
+      <button 
+        onClick={() => setSidebarVisible(!sidebarVisible)}
+        className="absolute top-4 left-4 z-30 bg-indigo-600 text-white p-2 rounded-full hover:bg-indigo-700 transition-transform transform hover:scale-110"
+        style={{ left: sidebarVisible ? 'calc(24rem + 1rem)' : '1rem' }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sidebarVisible ? "M15 19l-7-7 7-7" : "M4 6h16M4 12h16M4 18h16"} />
+        </svg>
+      </button>
+
       {/* Main content area for displaying the note */}
-      <div className="flex-1 flex items-center justify-center p-8 overflow-auto">
+      <div className="w-full h-full p-8 overflow-auto">
         {noteHtml ? (
           <div className="w-full h-full bg-white rounded-lg shadow-inner">
             <iframe
@@ -91,7 +103,7 @@ export const BeautifulNote: React.FC = () => {
             />
           </div>
         ) : (
-          <div className="text-center text-gray-500">
+          <div className="text-center text-gray-500 flex flex-col items-center justify-center h-full">
             <h2 className="text-2xl font-semibold">Your beautiful note will appear here</h2>
             <p>Enter a topic in the sidebar to get started.</p>
           </div>
