@@ -129,20 +129,25 @@ function createHtmlPrompt(topic: string, template: string = 'creative'): string 
   const selectedTemplate = templateStyles[template as keyof typeof templateStyles] || templateStyles.creative;
   
   return `
-    You are a master visual note-taker and graphic designer, using HTML and CSS as your medium. Your task is to generate a SINGLE, SELF-CONTAINED HTML document about: "${topic}".
+    You are a master visual note-taker and graphic designer, using HTML and CSS as your medium. 
     
-    **TEMPLATE STYLE:** ${selectedTemplate.description}
-    **SPECIAL INSTRUCTIONS:** ${selectedTemplate.emphasis}
+    **🎯 HIGHEST PRIORITY - FOLLOW THESE EXACTLY:**
+    1. **PRIMARY TOPIC:** "${topic}" - This is the MAIN subject. ALL content must be directly related to this topic. Do NOT deviate or add unrelated information.
+    2. **MANDATORY TEMPLATE:** ${selectedTemplate.description} - ${selectedTemplate.emphasis} This template style is NON-NEGOTIABLE and must be applied throughout.
+    
+    Your task is to generate a SINGLE, SELF-CONTAINED HTML document that creates beautiful visual notes specifically about: "${topic}".
     
     The final output must be a **dense, beautiful, information collage**. The goal is to present information in a visually engaging, compact, and layered manner, as if it were cut and pasted into a physical scrapbook.
 
     **CRITICAL INSTRUCTIONS - FOLLOW THESE EXACTLY OR THE TASK WILL FAIL:**
     1.  **HTML ONLY:** Your entire response MUST be only the HTML code. Start with \`<!DOCTYPE html>\` and end with \`</html>\`. NO MARKDOWN, NO EXPLANATIONS.
-    2.  **DENSE, LAYERED COLLAGE - NO EMPTY SPACE:** This is the most important rule. The final note MUST look completely full and dense. The layout should be compact and interlocking. Use the 8-column grid and a mix of \`col-span\` and \`row-span\` classes to create a dynamic layout with items of different sizes and shapes. Some items should be tall (\`row-span-3\`, \`row-span-4\`), others short. Some wide, some narrow. This is how you will fill all the space. Use the \`.tape\` class to create a layered, scrapbook feel.
-    3.  **USE A VARIETY OF STYLES:** Do NOT wrap every single element in a colored box. Use a mix of styles: \`.section\` for main content, \`.sticky-note\` for callouts, \`.key-fact\` for small highlights, and \`.quote\` for citations. This variety is essential.
-    4.  **NO DIAGRAMS OR IMAGES:** Do NOT include any placeholders for diagrams or images. The ONLY exception is the specific, hand-drawn SVG arrow code provided below.
-    5.  **GENERATE RICH CONTENT:** Create at least 6-8 distinct sections of content, totaling 400-500 words, to ensure the collage is rich with information.
-    6.  **USE DECORATIVE ELEMENTS:** You MUST include decorative elements on EVERY page. This is mandatory. Use a mix of:
+    2.  **TOPIC ADHERENCE:** Every single piece of content must relate directly to "${topic}". Do not include generic examples or unrelated information.
+    3.  **TEMPLATE CONSISTENCY:** Apply the "${selectedTemplate.description}" style throughout. This is mandatory.
+    4.  **DENSE, LAYERED COLLAGE - NO EMPTY SPACE:** This is the most important rule. The final note MUST look completely full and dense. The layout should be compact and interlocking. Use the 8-column grid and a mix of \`col-span\` and \`row-span\` classes to create a dynamic layout with items of different sizes and shapes. Some items should be tall (\`row-span-3\`, \`row-span-4\`), others short. Some wide, some narrow. This is how you will fill all the space. Use the \`.tape\` class to create a layered, scrapbook feel.
+    5.  **USE A VARIETY OF STYLES:** Do NOT wrap every single element in a colored box. Use a mix of styles: \`.section\` for main content, \`.sticky-note\` for callouts, \`.key-fact\` for small highlights, and \`.quote\` for citations. This variety is essential.
+    6.  **NO DIAGRAMS OR IMAGES:** Do NOT include any placeholders for diagrams or images. The ONLY exception is the specific, hand-drawn SVG arrow code provided below.
+    7.  **GENERATE RICH CONTENT:** Create at least 6-8 distinct sections of content, totaling 400-500 words, to ensure the collage is rich with information about "${topic}".
+    8.  **USE DECORATIVE ELEMENTS:** You MUST include decorative elements on EVERY page. This is mandatory. Use a mix of:
         - At least one hand-drawn arrow to connect ideas.
         - At least one wavy underline on a key phrase.
         - At least one circled piece of text.
@@ -329,6 +334,15 @@ function createHtmlPrompt(topic: string, template: string = 'creative'): string 
     - **Annotations:** Add small side notes with \`<span class="annotation">...\` next to a word or phrase.
 
     Now, generate the complete, self-contained HTML document for the topic: "${topic}".
-    Follow the instructions precisely. Create a wide, dense, 8-column information collage with 400-500 words. You must use a mix of column spans, row spans, and different content blocks (\`.section\`, \`.sticky-note\`, \`.key-fact\`). Use the \`.tape\` element to create a layered scrapbook effect. Use colored backgrounds **only where necessary for emphasis**, and **you must use arrows, wavy underlines, and circles**.
+    
+    **🚨 CRITICAL REMINDERS:**
+    - The topic "${topic}" must be the SOLE focus of all content
+    - The "${selectedTemplate.description}" template style must be applied consistently
+    - Follow the instructions precisely. Create a wide, dense, 8-column information collage with 400-500 words
+    - You must use a mix of column spans, row spans, and different content blocks (\`.section\`, \`.sticky-note\`, \`.key-fact\`)
+    - Use the \`.tape\` element to create a layered scrapbook effect
+    - Use colored backgrounds **only where necessary for emphasis**
+    - **You must use arrows, wavy underlines, and circles**
+    - ALL content must be directly related to "${topic}" - no generic examples or unrelated information
     `;
 }
