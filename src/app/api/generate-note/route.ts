@@ -5,14 +5,14 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 
 export async function POST(request: NextRequest) {
   try {
-    const { topic } = await request.json();
+    const { topic, template } = await request.json();
 
     if (!topic) {
       return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
     }
 
     // Create a new prompt that asks for HTML/CSS output
-    const prompt = createHtmlPrompt(topic);
+    const prompt = createHtmlPrompt(topic, template);
 
     // Call Gemini API with retry logic
     const maxRetries = 3;
@@ -91,9 +91,49 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function createHtmlPrompt(topic: string): string {
+function createHtmlPrompt(topic: string, template: string = 'creative'): string {
+  // Template-specific styling variations
+  const templateStyles = {
+    creative: {
+      description: 'hand-drawn style with colorful elements and organic layouts',
+      emphasis: 'Use vibrant colors, organic shapes, and artistic flourishes. Make it feel like a creative art journal.',
+      colors: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd']
+    },
+    academic: {
+      description: 'professional format perfect for research and academic work',
+      emphasis: 'Use clean, structured layouts with academic formatting. Include proper citations and formal presentation.',
+      colors: ['#2c3e50', '#3498db', '#e74c3c', '#f39c12', '#27ae60', '#9b59b6']
+    },
+    mindmap: {
+      description: 'visual connections and hierarchical information structure',
+      emphasis: 'Create branching, tree-like structures with connecting lines and hierarchical organization.',
+      colors: ['#27ae60', '#2ecc71', '#3498db', '#9b59b6', '#e67e22', '#e74c3c']
+    },
+    timeline: {
+      description: 'chronological layout perfect for historical topics',
+      emphasis: 'Organize information chronologically with clear time markers and sequential flow.',
+      colors: ['#f39c12', '#e67e22', '#d35400', '#c0392b', '#8e44ad', '#2c3e50']
+    },
+    comparison: {
+      description: 'side-by-side analysis and comparison charts',
+      emphasis: 'Use parallel columns and comparison tables to highlight differences and similarities.',
+      colors: ['#3498db', '#2980b9', '#e74c3c', '#c0392b', '#27ae60', '#f39c12']
+    },
+    notebook: {
+      description: 'traditional lined paper with handwritten aesthetics',
+      emphasis: 'Mimic classic notebook paper with ruled lines and natural handwriting flow.',
+      colors: ['#2c3e50', '#34495e', '#7f8c8d', '#95a5a6', '#bdc3c7', '#ecf0f1']
+    }
+  };
+
+  const selectedTemplate = templateStyles[template as keyof typeof templateStyles] || templateStyles.creative;
+  
   return `
     You are a master visual note-taker and graphic designer, using HTML and CSS as your medium. Your task is to generate a SINGLE, SELF-CONTAINED HTML document about: "${topic}".
+    
+    **TEMPLATE STYLE:** ${selectedTemplate.description}
+    **SPECIAL INSTRUCTIONS:** ${selectedTemplate.emphasis}
+    
     The final output must be a **dense, beautiful, information collage**. The goal is to present information in a visually engaging, compact, and layered manner, as if it were cut and pasted into a physical scrapbook.
 
     **CRITICAL INSTRUCTIONS - FOLLOW THESE EXACTLY OR THE TASK WILL FAIL:**
