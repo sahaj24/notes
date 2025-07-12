@@ -2,8 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { BeautifulNote } from './BeautifulNote';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export const LandingPage: React.FC = () => {
+  const { user } = useAuth();
+  const router = useRouter();
+  
   const [showApp, setShowApp] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const [mounted, setMounted] = useState(false);
@@ -17,6 +22,13 @@ export const LandingPage: React.FC = () => {
     setMounted(true);
   }, []);
 
+  // Redirect authenticated users to notes page
+  useEffect(() => {
+    if (user) {
+      router.push('/notes');
+    }
+  }, [user, router]);
+
   const handlePageChange = (page: string) => {
     if (page === currentPage) return;
     setIsTransitioning(true);
@@ -28,10 +40,8 @@ export const LandingPage: React.FC = () => {
   };
 
   const handleShowApp = () => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setShowApp(true);
-    }, 300);
+    // Redirect to auth page instead of showing app inline
+    router.push('/notes');
   };
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
@@ -182,12 +192,20 @@ export const LandingPage: React.FC = () => {
                 <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-black rounded-full animate-slideIn"></div>
               )}
             </button>
-            <button 
-              onClick={handleShowApp}
-              className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
-            >
-              Try Now
-            </button>
+            <div className="flex items-center space-x-3">
+              <a 
+                href="/login"
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200"
+              >
+                Sign In
+              </a>
+              <a 
+                href="/signup"
+                className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
+              >
+                Get Started
+              </a>
+            </div>
           </nav>
           <div className="md:hidden">
             <button 
@@ -253,15 +271,20 @@ export const LandingPage: React.FC = () => {
               >
                 About
               </button>
-              <button 
-                onClick={() => {
-                  handleShowApp();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 mt-4"
-              >
-                Try Now
-              </button>
+              <div className="border-t border-gray-100 pt-4 mt-4">
+                <a 
+                  href="/login"
+                  className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 py-2"
+                >
+                  Sign In
+                </a>
+                <a 
+                  href="/signup"
+                  className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 mt-2 text-center"
+                >
+                  Get Started
+                </a>
+              </div>
             </div>
           </div>
         )}
@@ -340,12 +363,12 @@ export const LandingPage: React.FC = () => {
           </p>
 
           <div className="flex items-center justify-center space-x-4 mb-16 animate-slideInUp" style={{ animationDelay: '0.4s' }}>
-            <button
-              onClick={handleShowApp}
+            <a
+              href="/signup"
               className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
             >
               Start generating notes
-            </button>
+            </a>
             <button
               onClick={() => handlePageChange('features')}
               className="border border-gray-300 text-gray-900 px-8 py-4 rounded-md font-medium hover:border-gray-400 transition-all duration-200 hover:shadow-md hover:bg-gray-50"
