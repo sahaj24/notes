@@ -2,9 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNotes } from '@/contexts/NotesContext';
-import { Note } from '@/lib/supabase';
-import { Save, Coins } from 'lucide-react';
 
 interface NoteTemplate {
   id: string;
@@ -23,9 +20,7 @@ interface GenerationHistory {
 }
 
 export const BeautifulNote: React.FC = () => {
-  const { user, userCoins, spendCoins, refundCoins, signOut } = useAuth();
-  const { notes, createNote, updateNote, saveNoteToStorage, loading: notesLoading } = useNotes();
-  
+  const { user, signOut } = useAuth();
   const [topic, setTopic] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('creative');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -33,13 +28,13 @@ export const BeautifulNote: React.FC = () => {
   const [noteHtml, setNoteHtml] = useState<string | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [currentStep, setCurrentStep] = useState<'input' | 'options' | 'result'>('input');
+  const [history, setHistory] = useState<GenerationHistory[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [exportFormat, setExportFormat] = useState<'html' | 'pdf' | 'image'>('html');
   const [isExporting, setIsExporting] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [pages, setPages] = useState<number>(1);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const templates: NoteTemplate[] = [
@@ -100,27 +95,12 @@ export const BeautifulNote: React.FC = () => {
       return;
     }
 
-    // Check if user has enough coins (1 coin per page)
-    const noteCost = pages || 1;
-    if (userCoins < noteCost) {
-      setError(`Not enough coins to generate ${pages > 1 ? pages + ' pages' : 'a note'}. You need ${noteCost} coins but only have ${userCoins}.`);
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     setNoteHtml(null);
     setCurrentStep('result');
 
     try {
-      // Spend coins first
-      const success = await spendCoins(noteCost, `Note generation: ${topic}`, undefined);
-      if (!success) {
-        setError('Failed to spend coins. Please try again.');
-        setIsLoading(false);
-        return;
-      }
-
       const response = await fetch('/api/generate-note', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -146,28 +126,6 @@ export const BeautifulNote: React.FC = () => {
       const cleanedHtml = data.noteHtml.replace(/```html/g, '').replace(/```/g, '').trim();
       setNoteHtml(cleanedHtml);
 
-      // Save to Supabase if user is authenticated
-      if (user) {
-        try {
-          const newNote = await createNote({
-            user_id: user.id,
-            title: topic,
-            content: topic,
-            svg_content: cleanedHtml,
-            cost: noteCost,
-            is_public: false,
-            tags: [selectedTemplate]
-          });
-          setCurrentNote(newNote);
-
-          // Also save to storage
-          await saveNoteToStorage(newNote.id, cleanedHtml);
-        } catch (saveError) {
-          console.error('Error saving note:', saveError);
-          // Don't break the flow, just log the error
-        }
-      }
-
       // Add to history
       const newHistoryItem: GenerationHistory = {
         id: Date.now().toString(),
@@ -176,21 +134,10 @@ export const BeautifulNote: React.FC = () => {
         timestamp: new Date(),
         preview: topic.substring(0, 50) + (topic.length > 50 ? '...' : '')
       };
-      // Note: History functionality disabled for now
+      setHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 10 items
 
-    } catch (err: unknown) {
-      const error = err as Error;
-      setError(error.message || 'Failed to generate note');
-      
-      // Refund coins if note generation failed
-      try {
-        const refundSuccess = await refundCoins(noteCost, `Refund for failed note generation: ${topic}`);
-        if (refundSuccess) {
-          console.log(`Refunded ${noteCost} coins due to generation failure`);
-        }
-      } catch (refundError) {
-        console.error('Failed to refund coins:', refundError);
-      }
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -219,7 +166,7 @@ export const BeautifulNote: React.FC = () => {
           iframeRef.current.contentWindow.print();
         }
       }
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Export error:', err);
     } finally {
       setIsExporting(false);
@@ -238,55 +185,11 @@ export const BeautifulNote: React.FC = () => {
     setNoteHtml(null);
   };
 
-  const handleSaveNote = async () => {
-    if (!noteHtml || !user) return;
-
-    try {
-      let savedNote = currentNote;
-      
-      if (!savedNote) {
-        // Create new note
-        savedNote = await createNote({
-          user_id: user.id,
-          title: topic,
-          content: topic,
-          svg_content: noteHtml,
-          cost: pages,
-          is_public: false,
-          tags: [selectedTemplate]
-        });
-        setCurrentNote(savedNote);
-      } else {
-        // Update existing note
-        savedNote = await updateNote(savedNote.id, {
-          title: topic,
-          content: topic,
-          svg_content: noteHtml,
-          tags: [selectedTemplate]
-        });
-      }
-
-      // Save to storage
-      await saveNoteToStorage(savedNote.id, noteHtml);
-      
-      // Show success message
-      setError(null);
-      alert('Note saved successfully!');
-    } catch (error) {
-      console.error('Error saving note:', error);
-      setError('Failed to save note. Please try again.');
-    }
-  };
-
-  const loadNote = (note: Note) => {
-    setTopic(note.title);
-    setNoteHtml(note.svg_content || '');
-    setCurrentNote(note);
-    setCurrentStep('result');
+  const loadFromHistory = (item: GenerationHistory) => {
+    setTopic(item.topic);
+    setSelectedTemplate(item.template);
     setShowHistory(false);
-    if (note.tags && note.tags.length > 0) {
-      setSelectedTemplate(note.tags[0]);
-    }
+    setCurrentStep('input');
   };
 
   // Add keyboard shortcuts
@@ -320,7 +223,7 @@ export const BeautifulNote: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentStep, topic, noteHtml, handleExport, handleGenerateNote]);
+  }, [currentStep, topic, noteHtml]);
 
   // Auto-save to localStorage
   useEffect(() => {
@@ -337,16 +240,27 @@ export const BeautifulNote: React.FC = () => {
 
   // Load last note on mount
   useEffect(() => {
-    // Component initialization
-    // TODO: Add any initialization logic here if needed
+    const savedNote = localStorage.getItem('notopy-last-note');
+    if (savedNote) {
+      try {
+        const { topic: savedTopic, template: savedTemplate, content: savedContent } = JSON.parse(savedNote);
+        // Optionally restore the last note
+        // setTopic(savedTopic);
+        // setSelectedTemplate(savedTemplate);
+        // setNoteHtml(savedContent);
+      } catch (error) {
+        console.error('Failed to load saved note:', error);
+      }
+    }
+  }, []);
+
+  // Load user data on component mount
+  useEffect(() => {
+    // User data is now handled by AuthContext
   }, []);
 
   const handleLogout = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
+    await signOut();
   };
 
   return (
@@ -372,14 +286,6 @@ export const BeautifulNote: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            {/* Coin Display */}
-            <div className="flex items-center space-x-2 px-3 py-2 bg-yellow-100 rounded-lg">
-              <Coins className="w-4 h-4 text-yellow-600" />
-              <span className="text-sm font-medium text-yellow-800">
-                {userCoins} coins
-              </span>
-            </div>
-
             <button
               onClick={() => setShowHistory(!showHistory)}
               className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 text-gray-700 hover:text-gray-900"
@@ -413,15 +319,6 @@ export const BeautifulNote: React.FC = () => {
                 </select>
                 
                 <button
-                  onClick={handleSaveNote}
-                  disabled={!noteHtml || !user}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 text-sm flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  Save
-                </button>
-                
-                <button
                   onClick={handleExport}
                   disabled={isExporting}
                   className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 text-sm"
@@ -440,7 +337,7 @@ export const BeautifulNote: React.FC = () => {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-                <span className="text-sm font-medium">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}</span>
+                <span className="text-sm font-medium">{user?.user_metadata?.full_name || user?.email || 'User'}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -449,7 +346,7 @@ export const BeautifulNote: React.FC = () => {
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                   <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}</p>
+                    <p className="text-sm font-medium text-gray-900">{user?.user_metadata?.full_name || user?.email || 'User'}</p>
                     <p className="text-xs text-gray-500">{user?.email || 'user@example.com'}</p>
                   </div>
                   <button
@@ -543,30 +440,25 @@ export const BeautifulNote: React.FC = () => {
       {showHistory && (
         <div className="absolute top-16 right-0 w-80 h-full bg-white shadow-xl z-20 border-l border-gray-200">
           <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Your Saved Notes</h3>
-            {notesLoading ? (
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-            ) : notes.length === 0 ? (
-              <p className="text-gray-500 text-sm">No saved notes yet</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Notes</h3>
+            {history.length === 0 ? (
+              <p className="text-gray-500 text-sm">No notes generated yet</p>
             ) : (
               <div className="space-y-3">
-                {notes.map((note) => (
+                {history.map((item) => (
                   <div
-                    key={note.id}
+                    key={item.id}
                     className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
-                    onClick={() => loadNote(note)}
+                    onClick={() => loadFromHistory(item)}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-900 truncate">{note.title}</span>
+                      <span className="text-sm font-medium text-gray-900">{item.preview}</span>
                       <span className="text-xs text-gray-500">
-                        {note.tags && note.tags.length > 0 ? 
-                          templates.find(t => t.id === note.tags![0])?.icon : '📝'}
+                        {templates.find(t => t.id === item.template)?.icon}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500">
-                      {new Date(note.created_at).toLocaleDateString()} at {new Date(note.created_at).toLocaleTimeString()}
+                      {item.timestamp.toLocaleDateString()} at {item.timestamp.toLocaleTimeString()}
                     </p>
                   </div>
                 ))}
@@ -623,7 +515,7 @@ export const BeautifulNote: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Number of pages (1 coin per page)
+                    Number of pages
                   </label>
                   <div className="flex items-center space-x-3">
                     <input
@@ -642,14 +534,11 @@ export const BeautifulNote: React.FC = () => {
                       <span className="text-sm text-gray-500">
                         page{pages > 1 ? 's' : ''}
                       </span>
-                      <span className="text-sm font-medium text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">
-                        {pages} coin{pages > 1 ? 's' : ''}
-                      </span>
                     </div>
                   </div>
                   <div className="flex justify-between text-xs text-gray-400 mt-1">
-                    <span>Single page (1 coin)</span>
-                    <span>Multiple pages ({pages} coins)</span>
+                    <span>Single page</span>
+                    <span>Multiple pages</span>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
                     {pages > 1 ? `Each page will build upon the previous one with continuing content.` : 'A single comprehensive page with all the content.'}
@@ -687,19 +576,10 @@ export const BeautifulNote: React.FC = () => {
 
                 <button
                   onClick={handleGenerateNote}
-                  disabled={isLoading || !topic.trim() || userCoins < pages}
-                  className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${
-                    userCoins < pages 
-                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                      : 'bg-black text-white hover:bg-gray-800'
-                  }`}
+                  disabled={isLoading || !topic.trim()}
+                  className="w-full bg-black text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
-                  {userCoins < pages ? (
-                    <div className="flex items-center justify-center space-x-2">
-                      <Coins className="h-5 w-5" />
-                      <span>Need {pages} coin{pages > 1 ? 's' : ''} (have {userCoins})</span>
-                    </div>
-                  ) : isLoading ? (
+                  {isLoading ? (
                     <div className="flex items-center justify-center space-x-2">
                       <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -708,10 +588,7 @@ export const BeautifulNote: React.FC = () => {
                       <span>Generating your note...</span>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center space-x-2">
-                      <span>Generate Note ({pages} coin{pages > 1 ? 's' : ''})</span>
-                      <Coins className="h-5 w-5" />
-                    </div>
+                    'Generate Note'
                   )}
                 </button>
 

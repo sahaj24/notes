@@ -1,49 +1,50 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { FcGoogle } from 'react-icons/fc';
-import { Sparkles, PenTool, Palette, Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface AuthPageProps {
-  mode?: 'login' | 'signup';
+  mode: 'login' | 'signup';
 }
 
-export const AuthPage: React.FC<AuthPageProps> = ({ mode = 'login' }) => {
-  const [currentMode, setCurrentMode] = useState<'login' | 'signup'>(mode);
-  const [authType, setAuthType] = useState<'google' | 'email'>('google');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  
-  // Form fields
+export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
+  const { user, signIn, signUp, signInWithGoogle, loading } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const [fullName, setFullName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [currentMode, setCurrentMode] = useState<'login' | 'signup'>(mode);
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await signInWithGoogle();
-    } catch (err: unknown) {
-      const error = err as Error;
-      setError(error.message || 'Failed to sign in with Google');
-    } finally {
-      setIsLoading(false);
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user && !loading) {
+      router.push('/notes');
     }
-  };
+  }, [user, loading, router]);
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  // Reset form when mode changes
+  useEffect(() => {
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setFullName('');
+    setError(null);
+    setSuccess(null);
+  }, [currentMode]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setSuccess(null);
 
-    // Validation
+    // Basic validation
     if (!email || !password) {
       setError('Please fill in all required fields');
       setIsLoading(false);
@@ -51,7 +52,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode = 'login' }) => {
     }
 
     if (currentMode === 'signup') {
-      if (!displayName) {
+      if (!fullName) {
         setError('Please enter your full name');
         setIsLoading(false);
         return;
@@ -69,265 +70,279 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode = 'login' }) => {
     }
 
     try {
-      if (currentMode === 'login') {
-        await signInWithEmail(email, password);
+      if (currentMode === 'signup') {
+        const { error } = await signUp(email, password, fullName);
+        if (error) {
+          setError(error.message);
+        } else {
+          setSuccess('Account created successfully! Please check your email to verify your account.');
+        }
       } else {
-        await signUpWithEmail(email, password, displayName);
+        const { error } = await signIn(email, password);
+        if (error) {
+          setError(error.message);
+        } else {
+          setSuccess('Login successful! Redirecting...');
+          setTimeout(() => {
+            router.push('/notes');
+          }, 1500);
+        }
       }
-    } catch (err: unknown) {
-      const error = err as Error;
-      setError(error.message || `Failed to ${currentMode === 'login' ? 'sign in' : 'sign up'}`);
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const switchMode = () => {
-    setCurrentMode(currentMode === 'login' ? 'signup' : 'login');
-    setError(null);
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
-    setDisplayName('');
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        setError(error.message);
+      }
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred');
+    }
   };
 
+  const toggleMode = () => {
+    setCurrentMode(currentMode === 'login' ? 'signup' : 'login');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-gray-200 border-t-black rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center items-center mb-4">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-3 rounded-full">
-              <PenTool className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Welcome to Notopy
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Create beautiful, AI-powered notes with hand-drawn aesthetics
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Floating doodles */}
+        <div className="absolute top-10 left-10 w-16 h-16 opacity-20 animate-float">
+          <svg viewBox="0 0 64 64" className="w-full h-full text-purple-400">
+            <path d="M32 8 L56 24 L56 40 L32 56 L8 40 L8 24 Z" fill="none" stroke="currentColor" strokeWidth="2" className="animate-draw"/>
+          </svg>
         </div>
-
-        {/* Features Preview */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="text-center">
-            <div className="bg-white rounded-lg p-3 shadow-sm mb-2">
-              <Sparkles className="w-6 h-6 text-yellow-500 mx-auto" />
-            </div>
-            <p className="text-xs text-gray-600">AI-Powered</p>
-          </div>
-          <div className="text-center">
-            <div className="bg-white rounded-lg p-3 shadow-sm mb-2">
-              <PenTool className="w-6 h-6 text-blue-500 mx-auto" />
-            </div>
-            <p className="text-xs text-gray-600">Hand-drawn</p>
-          </div>
-          <div className="text-center">
-            <div className="bg-white rounded-lg p-3 shadow-sm mb-2">
-              <Palette className="w-6 h-6 text-purple-500 mx-auto" />
-            </div>
-            <p className="text-xs text-gray-600">Colorful</p>
-          </div>
+        <div className="absolute top-20 right-20 w-12 h-12 opacity-20 animate-float-delay">
+          <svg viewBox="0 0 48 48" className="w-full h-full text-blue-400">
+            <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="2" className="animate-draw"/>
+            <circle cx="24" cy="24" r="8" fill="currentColor" className="opacity-30"/>
+          </svg>
         </div>
+        <div className="absolute bottom-20 left-20 w-20 h-20 opacity-20 animate-float">
+          <svg viewBox="0 0 80 80" className="w-full h-full text-pink-400">
+            <path d="M40 10 L60 30 L40 50 L20 30 Z" fill="none" stroke="currentColor" strokeWidth="2" className="animate-draw"/>
+          </svg>
+        </div>
+        <div className="absolute bottom-10 right-10 w-14 h-14 opacity-20 animate-float-delay">
+          <svg viewBox="0 0 56 56" className="w-full h-full text-green-400">
+            <path d="M28 8 L48 28 L28 48 L8 28 Z" fill="none" stroke="currentColor" strokeWidth="2" className="animate-draw"/>
+          </svg>
+        </div>
+      </div>
 
-        {/* Auth Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          <h2 className="text-2xl font-semibold text-gray-800 text-center mb-6">
-            {currentMode === 'login' ? 'Sign In' : 'Create Account'}
-          </h2>
-
-          {/* Auth Type Toggle */}
-          <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setAuthType('google')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                authType === 'google'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Google
-            </button>
-            <button
-              onClick={() => setAuthType('email')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                authType === 'email'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Email
-            </button>
+      {/* Main content */}
+      <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-8">
+        <div className="w-full max-w-md">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center space-x-3 mb-4">
+              <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center shadow-lg">
+                <div className="w-6 h-6 bg-white rounded-sm"></div>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900">Notopy</h1>
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+              {currentMode === 'login' ? 'Welcome Back!' : 'Create Account'}
+            </h2>
+            <p className="text-gray-600">
+              {currentMode === 'login' 
+                ? 'Sign in to continue creating beautiful notes' 
+                : 'Join us and start creating amazing notes'
+              }
+            </p>
           </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
-          )}
-
-          {authType === 'google' ? (
-            /* Google Sign In */
+          {/* Auth form */}
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-gray-200/50">
+            {/* Google Sign In Button */}
             <button
               onClick={handleGoogleSignIn}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl p-4 transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center space-x-3 py-3 px-4 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors duration-200 mb-6 shadow-sm"
             >
-              {isLoading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-              ) : (
-                <FcGoogle className="w-5 h-5" />
-              )}
-              <span className="text-gray-700 font-medium">
-                {isLoading ? 'Signing in...' : 'Continue with Google'}
-              </span>
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              <span className="font-medium">Continue with Google</span>
             </button>
-          ) : (
-            /* Email Form */
-            <form onSubmit={handleEmailAuth} className="space-y-4">
+
+            {/* Divider */}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
               {currentMode === 'signup' && (
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
+                <div className="animate-slideInUp">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </label>
                   <input
                     type="text"
-                    placeholder="Full Name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={isLoading}
-                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200 bg-white"
+                    placeholder="Enter your full name"
+                    required={currentMode === 'signup'}
                   />
                 </div>
               )}
-              
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
+
+              <div className="animate-slideInUp">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
                 <input
                   type="email"
-                  placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={isLoading}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200 bg-white"
+                  placeholder="Enter your email"
                   required
                 />
               </div>
-              
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={isLoading}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-              
-              {currentMode === 'signup' && (
+
+              <div className="animate-slideInUp">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Confirm Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200 bg-white"
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showPassword ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {currentMode === 'signup' && (
+                <div className="animate-slideInUp">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirm Password
+                  </label>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={isLoading}
-                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200 bg-white"
+                    placeholder="Confirm your password"
+                    required={currentMode === 'signup'}
                   />
                 </div>
               )}
-              
+
+              {error && (
+                <div className="animate-slideInUp p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {success && (
+                <div className="animate-slideInUp p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <p className="text-sm text-green-600">{success}</p>
+                  </div>
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-black text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-800 transition-all duration-200 transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
               >
                 {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    {currentMode === 'login' ? 'Signing in...' : 'Creating account...'}
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{currentMode === 'login' ? 'Signing in...' : 'Creating account...'}</span>
                   </div>
                 ) : (
                   currentMode === 'login' ? 'Sign In' : 'Create Account'
                 )}
               </button>
             </form>
-          )}
 
-          {/* Switch Mode */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              {currentMode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+            {/* Toggle mode */}
+            <div className="mt-6 text-center">
+              <p className="text-gray-600 mb-4">
+                {currentMode === 'login' ? "Don't have an account?" : "Already have an account?"}
+              </p>
               <button
-                onClick={switchMode}
-                className="text-blue-600 hover:text-blue-800 font-medium"
+                onClick={toggleMode}
+                className="text-black hover:text-gray-700 font-medium transition-colors duration-200 underline decoration-2 underline-offset-4 hover:decoration-gray-400"
               >
-                {currentMode === 'login' ? 'Sign up' : 'Sign in'}
+                {currentMode === 'login' ? 'Create account' : 'Sign in'}
               </button>
-            </p>
+            </div>
           </div>
 
-          {/* Terms */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              By continuing, you agree to our{' '}
-              <a href="#" className="text-blue-600 hover:underline">
+          {/* Footer */}
+          <div className="mt-8 text-center text-sm text-gray-500">
+            <p>
+              By {currentMode === 'login' ? 'signing in' : 'creating an account'}, you agree to our{' '}
+              <a href="#" className="text-black hover:text-gray-700 underline">
                 Terms of Service
               </a>{' '}
               and{' '}
-              <a href="#" className="text-blue-600 hover:underline">
+              <a href="#" className="text-black hover:text-gray-700 underline">
                 Privacy Policy
               </a>
             </p>
-          </div>
-        </div>
-
-        {/* Benefits */}
-        <div className="mt-8 text-center">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Why choose Notopy?
-          </h3>
-          <div className="space-y-2">
-            <div className="flex items-center justify-center gap-2 text-gray-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm">Free users get 5 coins daily</span>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-gray-600">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-sm">Registered users get 30 coins daily</span>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-gray-600">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span className="text-sm">Save and organize your notes</span>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-gray-600">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <span className="text-sm">Access from anywhere</span>
-            </div>
           </div>
         </div>
       </div>

@@ -2,13 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { BeautifulNote } from './BeautifulNote';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
 
 export const LandingPage: React.FC = () => {
-  const { user } = useAuth();
-  const router = useRouter();
-  
   const [showApp, setShowApp] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const [mounted, setMounted] = useState(false);
@@ -22,13 +17,6 @@ export const LandingPage: React.FC = () => {
     setMounted(true);
   }, []);
 
-  // Redirect authenticated users to notes page
-  useEffect(() => {
-    if (user) {
-      router.push('/notes');
-    }
-  }, [user, router]);
-
   const handlePageChange = (page: string) => {
     if (page === currentPage) return;
     setIsTransitioning(true);
@@ -40,8 +28,10 @@ export const LandingPage: React.FC = () => {
   };
 
   const handleShowApp = () => {
-    // Redirect to auth page instead of showing app inline
-    router.push('/notes');
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setShowApp(true);
+    }, 300);
   };
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
