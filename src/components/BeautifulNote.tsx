@@ -6,6 +6,7 @@ import { useUserProfile } from '@/contexts/UserProfileContext';
 import { CoinDisplay } from './CoinDisplay';
 import { supabase } from '@/lib/supabase';
 import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface NoteTemplate {
   id: string;
@@ -24,8 +25,6 @@ interface GenerationHistory {
   coins_spent: number;
   created_at: string;
 }
-
-import { jsPDF } from 'jspdf';
 
 export const BeautifulNote: React.FC = () => {
   const { user, signOut, session } = useAuth();
