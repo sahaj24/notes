@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { CoinDisplay } from './CoinDisplay';
+import { supabase } from '@/lib/supabase';
 
 interface NoteTemplate {
   id: string;
@@ -15,10 +16,12 @@ interface NoteTemplate {
 
 interface GenerationHistory {
   id: string;
-  topic: string;
+  title: string;
+  content: string;
   template: string;
-  timestamp: Date;
-  preview: string;
+  pages: number;
+  coins_spent: number;
+  created_at: string;
 }
 
 export const BeautifulNote: React.FC = () => {
@@ -157,20 +160,11 @@ export const BeautifulNote: React.FC = () => {
       const cleanedHtml = data.noteHtml.replace(/```html/g, '').replace(/```/g, '').trim();
       setNoteHtml(cleanedHtml);
 
-      // If user is authenticated, refresh their profile to show updated coin balance
+      // If user is authenticated, refresh their profile and history
       if (user && data.coinsRemaining !== undefined) {
         await refreshProfile();
+        await fetchHistory(); // Refresh history from database
       }
-
-      // Add to history
-      const newHistoryItem: GenerationHistory = {
-        id: Date.now().toString(),
-        topic,
-        template: selectedTemplate,
-        timestamp: new Date(),
-        preview: topic.substring(0, 50) + (topic.length > 50 ? '...' : '')
-      };
-      setHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 10 items
 
     } catch (err: any) {
       setError(err.message);
@@ -223,11 +217,77 @@ export const BeautifulNote: React.FC = () => {
     setNoteHtml(null);
   };
 
-  const loadFromHistory = (item: GenerationHistory) => {
-    setTopic(item.topic);
-    setSelectedTemplate(item.template);
-    setShowHistory(false);
-    setCurrentStep('input');
+  // Fetch history from database
+  const fetchHistory = async () => {
+    if (!user || !session) return;
+
+    try {
+      const response = await fetch('/api/user/notes', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const dbHistory = result.data.map((note: any) => ({
+          id: note.id,
+          topic: note.title,
+          template: note.template,
+          timestamp: new Date(note.created_at),
+          preview: note.title.substring(0, 50) + (note.title.length > 50 ? '...' : ''),
+          pages: note.pages || 1,
+          coins_spent: note.coins_spent || 1
+        }));
+        setHistory(dbHistory);
+      }
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+    }
+  };
+
+  // Load history when user logs in
+  useEffect(() => {
+    if (user && session) {
+      fetchHistory();
+    } else {
+      setHistory([]);
+    }
+  }, [user, session]);
+
+  // Load a note from history
+  const loadFromHistory = async (noteId: string) => {
+    if (!user || !session) return;
+
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/user/notes/${noteId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const note = result.data;
+        
+        setTopic(note.title);
+        setSelectedTemplate(note.template);
+        setPages(note.pages || 1);
+        setNoteHtml(note.content);
+        setCurrentStep('result');
+        setShowHistory(false);
+      } else {
+        setError('Failed to load note from history');
+      }
+    } catch (error) {
+      console.error('Error loading note:', error);
+      setError('Failed to load note from history');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Add keyboard shortcuts
@@ -263,34 +323,26 @@ export const BeautifulNote: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentStep, topic, noteHtml]);
 
-  // Auto-save to localStorage
+  // Load note history on component mount
   useEffect(() => {
-    if (noteHtml && topic) {
-      const noteData = {
-        topic,
-        template: selectedTemplate,
-        content: noteHtml,
-        timestamp: new Date().toISOString()
-      };
-      localStorage.setItem('notopy-last-note', JSON.stringify(noteData));
-    }
-  }, [noteHtml, topic, selectedTemplate]);
-
-  // Load last note on mount
-  useEffect(() => {
-    const savedNote = localStorage.getItem('notopy-last-note');
-    if (savedNote) {
-      try {
-        const { topic: savedTopic, template: savedTemplate, content: savedContent } = JSON.parse(savedNote);
-        // Optionally restore the last note
-        // setTopic(savedTopic);
-        // setSelectedTemplate(savedTemplate);
-        // setNoteHtml(savedContent);
-      } catch (error) {
-        console.error('Failed to load saved note:', error);
-      }
-    }
+    fetchHistory();
   }, []);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showUserMenu && !target.closest('.user-menu')) {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
 
   // Load user data on component mount
   useEffect(() => {
@@ -298,7 +350,41 @@ export const BeautifulNote: React.FC = () => {
   }, []);
 
   const handleLogout = async () => {
-    await signOut();
+    console.log('🔥 LOGOUT CLICKED!'); // Debug
+    
+    try {
+      setShowUserMenu(false);
+      console.log('🔄 Starting signOut process...'); // Debug
+      
+      // Try multiple logout approaches
+      try {
+        await signOut();
+        console.log('✅ AuthContext signOut successful'); // Debug
+      } catch (authError) {
+        console.log('❌ AuthContext signOut failed, trying direct supabase...', authError); // Debug
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error('❌ Direct supabase signOut failed:', error);
+        } else {
+          console.log('✅ Direct supabase signOut successful'); // Debug
+        }
+      }
+      
+      // Clear state and redirect regardless
+      console.log('🧹 Clearing state...'); // Debug
+      setHistory([]);
+      setNoteHtml(null);
+      setTopic('');
+      setCurrentStep('input');
+      
+      console.log('🔀 Redirecting to login...'); // Debug
+      window.location.href = '/login';
+      
+    } catch (error) {
+      console.error('💥 Complete logout failure:', error);
+      // Force redirect anyway
+      window.location.href = '/login';
+    }
   };
 
   return (
@@ -370,7 +456,7 @@ export const BeautifulNote: React.FC = () => {
             )}
 
             {/* User menu */}
-            <div className="relative">
+            <div className="relative user-menu">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 text-gray-700 hover:text-gray-900"
@@ -490,16 +576,16 @@ export const BeautifulNote: React.FC = () => {
                   <div
                     key={item.id}
                     className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
-                    onClick={() => loadFromHistory(item)}
+                    onClick={() => loadFromHistory(item.id)}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-900">{item.preview}</span>
+                      <span className="text-sm font-medium text-gray-900">{item.title}</span>
                       <span className="text-xs text-gray-500">
                         {templates.find(t => t.id === item.template)?.icon}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500">
-                      {item.timestamp.toLocaleDateString()} at {item.timestamp.toLocaleTimeString()}
+                      {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recently'} • {item.pages} page{item.pages !== 1 ? 's' : ''}
                     </p>
                   </div>
                 ))}
@@ -528,7 +614,7 @@ export const BeautifulNote: React.FC = () => {
                   <textarea
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    placeholder="e.g., 'The Renaissance period in European history' or 'Machine Learning fundamentals'"
+                    placeholder="e.g., ' Renaissance history' or 'ML basics'"
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none h-20 bg-white text-gray-900 placeholder-gray-500 font-sans"
                     disabled={isLoading}
                   />
@@ -864,6 +950,54 @@ export const BeautifulNote: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* History Panel */}
+      {showHistory && (
+        <div className="absolute top-0 right-0 w-80 h-full bg-white border-l border-gray-200 shadow-lg z-40 overflow-hidden">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Note History</h3>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4">
+              {history.length === 0 ? (
+                <div className="text-center text-gray-500 mt-8">
+                  <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p>No notes generated yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {history.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200"
+                      onClick={() => loadFromHistory(item.id)}
+                    >
+                      <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recently'} • {item.template}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {item.pages} page{item.pages !== 1 ? 's' : ''} • {item.coins_spent} coin{item.coins_spent !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

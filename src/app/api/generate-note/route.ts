@@ -180,12 +180,36 @@ export async function POST(request: NextRequest) {
           }, { status: 500 });
         }
 
+        // Save note to database for history
+        const noteData = {
+          user_id: user.id,
+          title: topic.substring(0, 100), // Limit title length
+          content: generatedHtml,
+          template: template || 'creative',
+          pages: numPages,
+          coins_spent: coinsRequired,
+          created_at: new Date().toISOString()
+        };
+
+        const { data: savedNote, error: noteError } = await supabase
+          .from('user_notes')
+          .insert(noteData)
+          .select()
+          .single();
+
+        if (noteError) {
+          console.log('Note save failed but coins deducted:', noteError);
+          // Don't fail the request, just log the error
+        }
+
         // Return success with updated coin balance
         return NextResponse.json({ 
           noteHtml: generatedHtml,
           coinsRemaining: new_balance,
           coinsSpent: coinsRequired,
-          profile: updatedProfile
+          profile: updatedProfile,
+          noteId: savedNote?.id || null,
+          saved: !!savedNote
         });
 
       } catch (dbError) {
