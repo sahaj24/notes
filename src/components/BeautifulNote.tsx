@@ -47,6 +47,74 @@ export const BeautifulNote: React.FC = () => {
   const [coinWarning, setCoinWarning] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Function to auto-crop canvas and remove excess whitespace
+  const cropCanvas = (sourceCanvas: HTMLCanvasElement): HTMLCanvasElement => {
+    const ctx = sourceCanvas.getContext('2d');
+    if (!ctx) return sourceCanvas;
+    
+    const imageData = ctx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+    const data = imageData.data;
+    
+    let minX = sourceCanvas.width, minY = sourceCanvas.height, maxX = 0, maxY = 0;
+    const backgroundRGB = [244, 244, 244]; // #f4f4f4 background color
+    const tolerance = 10; // Color tolerance for cropping
+    
+    // Find the bounds of non-background content
+    for (let y = 0; y < sourceCanvas.height; y++) {
+      for (let x = 0; x < sourceCanvas.width; x++) {
+        const index = (y * sourceCanvas.width + x) * 4;
+        const r = data[index];
+        const g = data[index + 1];
+        const b = data[index + 2];
+        const a = data[index + 3];
+        
+        // Check if pixel is significantly different from background
+        const isContent = a > 128 && (
+          Math.abs(r - backgroundRGB[0]) > tolerance ||
+          Math.abs(g - backgroundRGB[1]) > tolerance ||
+          Math.abs(b - backgroundRGB[2]) > tolerance
+        );
+        
+        if (isContent) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+    
+    // Add small padding around content
+    const padding = 20;
+    minX = Math.max(0, minX - padding);
+    minY = Math.max(0, minY - padding);
+    maxX = Math.min(sourceCanvas.width, maxX + padding);
+    maxY = Math.min(sourceCanvas.height, maxY + padding);
+    
+    // Create cropped canvas
+    const croppedWidth = maxX - minX;
+    const croppedHeight = maxY - minY;
+    
+    if (croppedWidth <= 0 || croppedHeight <= 0) {
+      return sourceCanvas; // Return original if cropping failed
+    }
+    
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = croppedWidth;
+    croppedCanvas.height = croppedHeight;
+    
+    const croppedCtx = croppedCanvas.getContext('2d');
+    if (croppedCtx) {
+      croppedCtx.drawImage(
+        sourceCanvas,
+        minX, minY, croppedWidth, croppedHeight,
+        0, 0, croppedWidth, croppedHeight
+      );
+    }
+    
+    return croppedCanvas;
+  };
+
   const templates: NoteTemplate[] = [
     {
       id: 'creative',
@@ -318,7 +386,7 @@ export const BeautifulNote: React.FC = () => {
           
           console.log(`Container dimensions: ${contentWidth}x${actualHeight}`);
           
-          // Use html2canvas with minimal padding settings
+          // Use html2canvas with minimal padding settings and then crop
           const canvas = await html2canvas(container, {
             backgroundColor: '#f4f4f4',
             scale: 1.5, // Balanced scale for good quality without being too large
@@ -338,8 +406,11 @@ export const BeautifulNote: React.FC = () => {
             }
           });
           
+          // Auto-crop the canvas to remove excess whitespace
+          const croppedCanvas = cropCanvas(canvas);
+          
           // Convert to PNG and download
-          canvas.toBlob((blob) => {
+          croppedCanvas.toBlob((blob: Blob | null) => {
             if (blob) {
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
@@ -475,7 +546,7 @@ export const BeautifulNote: React.FC = () => {
           
           console.log(`Container dimensions: ${contentWidth}x${actualHeight}`);
           
-          // Use html2canvas to capture the screenshot with minimal padding
+          // Use html2canvas to capture the screenshot with minimal padding and then crop
           const canvas = await html2canvas(container, {
             backgroundColor: '#f4f4f4',
             scale: 1.5, // Balanced scale for good quality without being too large
@@ -495,8 +566,11 @@ export const BeautifulNote: React.FC = () => {
             }
           });
           
+          // Auto-crop the canvas to remove excess whitespace
+          const croppedCanvas = cropCanvas(canvas);
+          
           // Convert canvas to image data
-          const imageData = canvas.toDataURL('image/png');
+          const imageData = croppedCanvas.toDataURL('image/png');
           
           // Calculate PDF dimensions (A4 size with some margin)
           const pdfWidth = 210; // A4 width in mm
@@ -505,9 +579,9 @@ export const BeautifulNote: React.FC = () => {
           const maxImageWidth = pdfWidth - (margin * 2);
           const maxImageHeight = pdfHeight - (margin * 2);
           
-          // Calculate image dimensions to fit in PDF
-          const imageWidth = canvas.width;
-          const imageHeight = canvas.height;
+          // Calculate image dimensions to fit in PDF using cropped canvas
+          const imageWidth = croppedCanvas.width;
+          const imageHeight = croppedCanvas.height;
           const aspectRatio = imageWidth / imageHeight;
           
           let finalWidth = maxImageWidth;
