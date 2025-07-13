@@ -2,8 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { BeautifulNote } from './BeautifulNote';
+import { CoinDisplay } from './CoinDisplay';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 export const LandingPage: React.FC = () => {
+  const { user } = useAuth();
+  const { profile } = useUserProfile();
   const [showApp, setShowApp] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const [mounted, setMounted] = useState(false);
@@ -208,18 +213,32 @@ export const LandingPage: React.FC = () => {
               )}
             </button>
             <div className="flex items-center space-x-3">
-              <a 
-                href="/login"
-                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200"
-              >
-                Sign In
-              </a>
-              <a 
-                href="/signup"
-                className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                Get Started
-              </a>
+              {user ? (
+                <>
+                  <CoinDisplay className="mr-2" />
+                  <button
+                    onClick={handleShowApp}
+                    className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
+                    Create Note
+                  </button>
+                </>
+              ) : (
+                <>
+                  <a 
+                    href="/login"
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                  >
+                    Sign In
+                  </a>
+                  <a 
+                    href="/signup"
+                    className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
+                    Get Started
+                  </a>
+                </>
+              )}
             </div>
           </nav>
           <div className="md:hidden">
@@ -288,18 +307,37 @@ export const LandingPage: React.FC = () => {
                 About
               </button>
               <div className="border-t border-gray-100 pt-4 mt-4">
-                <a 
-                  href="/login"
-                  className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 py-2"
-                >
-                  Sign In
-                </a>
-                <a 
-                  href="/signup"
-                  className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 mt-2 text-center"
-                >
-                  Get Started
-                </a>
+                {user ? (
+                  <>
+                    <div className="mb-4">
+                      <CoinDisplay showDetails={true} />
+                    </div>
+                    <button
+                      onClick={() => {
+                        handleShowApp();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 text-center"
+                    >
+                      Create Note
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <a 
+                      href="/login"
+                      className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 py-2"
+                    >
+                      Sign In
+                    </a>
+                    <a 
+                      href="/signup"
+                      className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 mt-2 text-center"
+                    >
+                      Get Started
+                    </a>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -365,8 +403,80 @@ export const LandingPage: React.FC = () => {
   const HomePage = () => (
     <div className="page-transition">
       {/* Hero */}
-      <section className="max-w-7xl mx-auto px-6 py-24 landing-section animate-on-load animate-fade-in-up">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="max-w-7xl mx-auto px-6 py-24 landing-section animate-on-load animate-fade-in-up relative">
+        {/* Animated Background */}
+        <div className="hero-animation-container">
+          {/* Grid Pattern Background */}
+          <div className="grid-pattern"></div>
+          
+          {/* Morphing Blob */}
+          <div className="morphing-blob"></div>
+          
+          {/* Floating Geometric Shapes */}
+          <div className="floating-shape">
+            <svg width="60" height="60" viewBox="0 0 60 60">
+              <rect width="60" height="60" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2" transform="rotate(45 30 30)"/>
+            </svg>
+          </div>
+          <div className="floating-shape">
+            <svg width="40" height="40" viewBox="0 0 40 40">
+              <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/>
+            </svg>
+          </div>
+          <div className="floating-shape">
+            <svg width="50" height="50" viewBox="0 0 50 50">
+              <polygon points="25,5 45,35 5,35" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/>
+            </svg>
+          </div>
+          <div className="floating-shape">
+            <svg width="70" height="30" viewBox="0 0 70 30">
+              <ellipse cx="35" cy="15" rx="33" ry="13" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/>
+            </svg>
+          </div>
+          <div className="floating-shape">
+            <svg width="45" height="45" viewBox="0 0 45 45">
+              <path d="M22.5,2 L42,22.5 L22.5,43 L3,22.5 Z" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/>
+            </svg>
+          </div>
+          
+          {/* Pulsing Circles */}
+          <div className="pulse-circle"></div>
+          <div className="pulse-circle"></div>
+          <div className="pulse-circle"></div>
+          
+          {/* Diagonal Sliding Elements */}
+          <div className="diagonal-slider"></div>
+          <div className="diagonal-slider"></div>
+          <div className="diagonal-slider"></div>
+          <div className="diagonal-slider"></div>
+          <div className="diagonal-slider"></div>
+          
+          {/* Scattered Dots */}
+          <div className="dot-scatter"></div>
+          <div className="dot-scatter"></div>
+          <div className="dot-scatter"></div>
+          <div className="dot-scatter"></div>
+          <div className="dot-scatter"></div>
+          <div className="dot-scatter"></div>
+          
+          {/* Connecting Lines */}
+          <div className="connecting-line"></div>
+          <div className="connecting-line"></div>
+          <div className="connecting-line"></div>
+          
+          {/* SVG Drawing Paths */}
+          <svg className="absolute top-0 left-0 w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
+            <path className="drawing-path" d="M100,200 Q300,100 500,200 T900,200" strokeLinecap="round"/>
+            <path className="drawing-path" d="M200,400 Q400,300 600,400 T1000,400" strokeLinecap="round" style={{ animationDelay: '2s' }}/>
+            <path className="drawing-path" d="M50,600 Q250,500 450,600 T850,600" strokeLinecap="round" style={{ animationDelay: '4s' }}/>
+            <circle className="drawing-path" cx="300" cy="150" r="50" style={{ animationDelay: '1s' }}/>
+            <circle className="drawing-path" cx="800" cy="300" r="70" style={{ animationDelay: '3s' }}/>
+            <circle className="drawing-path" cx="600" cy="500" r="40" style={{ animationDelay: '5s' }}/>
+          </svg>
+        </div>
+
+        {/* Hero Content */}
+        <div className="max-w-4xl mx-auto text-center hero-content-overlay rounded-lg p-8">
           <h1 className="text-7xl font-light text-gray-900 mb-8 leading-[1.1] tracking-tight animate-on-load animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             AI-powered note
             <br />
@@ -733,7 +843,7 @@ export const LandingPage: React.FC = () => {
             <span className="font-medium">pricing</span>
           </h1>
           <p className="text-xl text-gray-600 leading-relaxed font-light">
-            Choose the plan that's right for you. Start free, upgrade when you need more.
+            Pay per note with our coin system. No subscriptions, no monthly fees - just pay for what you use.
           </p>
         </div>
 
@@ -742,15 +852,21 @@ export const LandingPage: React.FC = () => {
             <div className="text-center mb-8">
               <h3 className="text-2xl font-medium text-gray-900 mb-2">Free</h3>
               <p className="text-gray-600 mb-4">Perfect for getting started</p>
-              <div className="text-4xl font-light text-gray-900">$0</div>
-              <div className="text-gray-600">per month</div>
+              <div className="text-4xl font-light text-gray-900">30</div>
+              <div className="text-gray-600">coins on signup</div>
             </div>
             <ul className="space-y-4 mb-8">
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">10 notes per month</span>
+                <span className="text-gray-600">30 coins welcome bonus</span>
+              </li>
+              <li className="flex items-center">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-600">10 notes per month limit</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -762,7 +878,7 @@ export const LandingPage: React.FC = () => {
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">Image export</span>
+                <span className="text-gray-600">1 coin = 1 page</span>
               </li>
             </ul>
             <button
@@ -781,14 +897,20 @@ export const LandingPage: React.FC = () => {
               <h3 className="text-2xl font-medium text-gray-900 mb-2">Pro</h3>
               <p className="text-gray-600 mb-4">For students and professionals</p>
               <div className="text-4xl font-light text-gray-900">$12</div>
-              <div className="text-gray-600">per month</div>
+              <div className="text-gray-600">per month + 100 bonus coins</div>
             </div>
             <ul className="space-y-4 mb-8">
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">Unlimited notes</span>
+                <span className="text-gray-600">100 bonus coins on upgrade</span>
+              </li>
+              <li className="flex items-center">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-600">Unlimited monthly notes</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -813,7 +935,7 @@ export const LandingPage: React.FC = () => {
               onClick={() => setShowApp(true)}
               className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
             >
-              Start free trial
+              Upgrade to Pro
             </button>
           </div>
 
@@ -822,9 +944,15 @@ export const LandingPage: React.FC = () => {
               <h3 className="text-2xl font-medium text-gray-900 mb-2">Enterprise</h3>
               <p className="text-gray-600 mb-4">For teams and organizations</p>
               <div className="text-4xl font-light text-gray-900">$49</div>
-              <div className="text-gray-600">per month</div>
+              <div className="text-gray-600">per month + 200 bonus coins</div>
             </div>
             <ul className="space-y-4 mb-8">
+              <li className="flex items-center">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-600">200 bonus coins on upgrade</span>
+              </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -853,6 +981,33 @@ export const LandingPage: React.FC = () => {
             <button className="w-full border border-gray-300 text-gray-900 px-6 py-3 rounded-md font-medium hover:border-gray-400 transition-colors">
               Contact sales
             </button>
+          </div>
+        </div>
+
+        <div className="text-center">
+          <h3 className="text-2xl font-medium text-gray-900 mb-4">How the coin system works</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-white font-bold text-lg">¢</span>
+              </div>
+              <h4 className="font-medium text-gray-900 mb-2">1 Coin = 1 Page</h4>
+              <p className="text-gray-600 text-sm">Each page of notes costs exactly 1 coin. Multi-page notes cost coins per page.</p>
+            </div>
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-white font-bold text-lg">+</span>
+              </div>
+              <h4 className="font-medium text-gray-900 mb-2">Earn Bonus Coins</h4>
+              <p className="text-gray-600 text-sm">Get bonus coins for being an active user, referrals, and special promotions.</p>
+            </div>
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-white font-bold text-lg">∞</span>
+              </div>
+              <h4 className="font-medium text-gray-900 mb-2">No Expiration</h4>
+              <p className="text-gray-600 text-sm">Your coins never expire. Use them whenever you need to generate notes.</p>
+            </div>
           </div>
         </div>
       </section>

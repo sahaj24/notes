@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 const GEMINI_API_KEY = 'AIzaSyD2maptK3FUHCnFc6Y9cBRQuYRP1nB9WqQ';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
@@ -6,6 +7,7 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
 export async function POST(request: NextRequest) {
   try {
     const { topic, template, pages } = await request.json();
+    const authHeader = request.headers.get('authorization');
 
     if (!topic) {
       return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
@@ -13,6 +15,58 @@ export async function POST(request: NextRequest) {
 
     // Validate pages parameter
     const numPages = pages && pages >= 1 && pages <= 10 ? pages : 1;
+    const coinsRequired = numPages; // 1 coin per page
+
+    // Check authentication if provided
+    let user = null;
+    let userProfile = null;
+
+    if (authHeader) {
+      // Create authenticated Supabase client
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+      
+      if (!authError && authUser) {
+        user = authUser;
+        
+        // Get user profile to check coins
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (!profileError && profile) {
+          userProfile = profile;
+          
+          // Check if user has enough coins
+          if (profile.coins < coinsRequired) {
+            return NextResponse.json({ 
+              error: `Insufficient coins. You need ${coinsRequired} coins but have ${profile.coins}`,
+              coinsRequired,
+              coinsAvailable: profile.coins
+            }, { status: 402 }); // Payment required
+          }
+
+          // Simple tier check for free users (no need for database lookup)
+          if (profile.tier === 'free') {
+            const MONTHLY_LIMIT = 50; // Simple hardcoded limit for free tier
+            
+            if (profile.total_notes_generated >= MONTHLY_LIMIT) {
+              return NextResponse.json({ 
+                error: `Monthly limit reached. Free tier users can generate up to ${MONTHLY_LIMIT} notes per month.`,
+                monthlyLimit: MONTHLY_LIMIT,
+                currentCount: profile.total_notes_generated
+              }, { status: 429 }); // Too many requests
+            }
+          }
+        }
+      }
+    }
 
     // Create a new prompt that asks for HTML/CSS output
     const prompt = createHtmlPrompt(topic, template, numPages);
@@ -83,8 +137,73 @@ export async function POST(request: NextRequest) {
 
     const generatedHtml = data.candidates[0].content.parts[0].text;
 
+    // If user is authenticated, deduct coins and save note
+    if (user && userProfile) {
+      try {
+        // Deduct coins using simple approach
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        // Calculate new coin balance and update profile
+        const previous_balance = userProfile.coins;
+        const new_balance = previous_balance - coinsRequired;
+        
+        const updateData = {
+          coins: new_balance,
+          total_coins_spent: userProfile.total_coins_spent + coinsRequired,
+          total_notes_generated: userProfile.total_notes_generated + 1,
+          last_transaction: {
+            amount: coinsRequired,
+            transaction_type: 'deduction',
+            description: `Generated ${numPages} page note: "${topic.substring(0, 50)}${topic.length > 50 ? '...' : ''}"`,
+            previous_balance,
+            new_balance,
+            timestamp: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        };
+
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from('user_profiles')
+          .update(updateData)
+          .eq('id', user.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('Failed to deduct coins:', updateError);
+          return NextResponse.json({ 
+            error: 'Failed to process payment. Please try again.',
+            details: updateError.message 
+          }, { status: 500 });
+        }
+
+        // Return success with updated coin balance
+        return NextResponse.json({ 
+          noteHtml: generatedHtml,
+          coinsRemaining: new_balance,
+          coinsSpent: coinsRequired,
+          profile: updatedProfile
+        });
+
+      } catch (dbError) {
+        console.error('Database error after note generation:', dbError);
+        // Note was generated but DB operations failed - still return the note
+        return NextResponse.json({ 
+          noteHtml: generatedHtml,
+          warning: 'Note generated but payment processing had issues. Please contact support.'
+        });
+      }
+    }
+
     // The AI now returns a full HTML document, so we just send that back.
-    return NextResponse.json({ noteHtml: generatedHtml });
+    return NextResponse.json({ 
+      noteHtml: generatedHtml,
+      guestMode: true,
+      message: 'Sign up to save notes and track usage!'
+    });
   } catch (error: any) {
     console.error('Error generating note:', error);
     return NextResponse.json(
