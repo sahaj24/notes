@@ -157,7 +157,11 @@ export const BeautifulNote: React.FC = () => {
         throw new Error("Received invalid note structure from server.");
       }
       
-      const cleanedHtml = data.noteHtml.replace(/```html/g, '').replace(/```/g, '').trim();
+      const cleanedHtml = data.noteHtml
+        .replace(/```html\s*/g, '')
+        .replace(/```\s*$/g, '')
+        .replace(/^```\s*/g, '')
+        .trim();
       setNoteHtml(cleanedHtml);
 
       // If user is authenticated, refresh their profile and history

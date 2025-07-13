@@ -320,7 +320,6 @@ function createHtmlPrompt(topic: string, template: string = 'creative', numPages
     -   **Tape:** Use \`<div class="tape"></div>\` on some elements to make them look "taped on."
 
     **CSS TO USE:**
-    \`\`\`css
     /* In the <style> tag */
     @import url('https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Kalam:wght@300;400;700&family=Caveat&display=swap');
     body {
@@ -502,11 +501,9 @@ function createHtmlPrompt(topic: string, template: string = 'creative', numPages
     }
     ul { list-style-type: '→ '; padding-left: 1.5rem; }
     p, li { font-size: 1.1rem; line-height: 1.6; }
-    \`\`\`
 
     **ADVANCED DECORATIVE ELEMENTS:**
-    - **Hand-Drawn Arrow (SVG):** To connect ideas, place this SVG inside a grid item. You MUST change the \`transform\` style to rotate it randomly (e.g., \`style="transform: rotate(-5deg);"\`).
-      \`\`\`html
+    - **Hand-Drawn Arrow (SVG):** To connect ideas, place this SVG inside a grid item. You MUST change the transform style to rotate it randomly (e.g., style="transform: rotate(-5deg);").
       <svg class="arrow" viewBox="0 0 100 50">
         <path d="M5,25 C25,10 75,10 95,25" stroke-dasharray="100" stroke-dashoffset="100">
           <animate attributeName="stroke-dashoffset" from="100" to="0" dur="1s" fill="freeze" />
@@ -515,10 +512,9 @@ function createHtmlPrompt(topic: string, template: string = 'creative', numPages
             <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="0.8s" fill="freeze" />
         </path>
       </svg>
-      \`\`\`
-    - **Wavy Underline:** Wrap any text with \`<span class="wavy-underline">...\` to apply a wavy underline.
-    - **Circled Text:** Wrap any text with \`<span class="circle-text">...\` to draw a circle around it.
-    - **Annotations:** Add small side notes with \`<span class="annotation">...\` next to a word or phrase.
+    - **Wavy Underline:** Wrap any text with <span class="wavy-underline">... to apply a wavy underline.
+    - **Circled Text:** Wrap any text with <span class="circle-text">... to draw a circle around it.
+    - **Annotations:** Add small side notes with <span class="annotation">... next to a word or phrase.
 
     Now, generate the complete, self-contained HTML document for the topic: "${topic}" with exactly ${numPages} page${numPages > 1 ? 's' : ''}.
     

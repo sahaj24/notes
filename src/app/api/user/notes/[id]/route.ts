@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -23,7 +23,8 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const noteId = params.id;
+    const resolvedParams = await params;
+    const noteId = resolvedParams.id;
 
     // Fetch the specific note
     const { data: note, error: noteError } = await supabase
