@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { CoinDisplay } from './CoinDisplay';
 import { supabase } from '@/lib/supabase';
+import html2canvas from 'html2canvas';
 
 interface NoteTemplate {
   id: string;
@@ -23,6 +24,8 @@ interface GenerationHistory {
   coins_spent: number;
   created_at: string;
 }
+
+import { jsPDF } from 'jspdf';
 
 export const BeautifulNote: React.FC = () => {
   const { user, signOut, session } = useAuth();
@@ -161,6 +164,9 @@ export const BeautifulNote: React.FC = () => {
         .replace(/```html\s*/g, '')
         .replace(/```\s*$/g, '')
         .replace(/^```\s*/g, '')
+        .replace(/```/g, '')                  // Remove any remaining ```
+        .replace(/^\s*html\s*/i, '')          // Remove standalone 'html' text
+        .replace(/^\s*<!DOCTYPE/i, '<!DOCTYPE') // Ensure DOCTYPE starts properly
         .trim();
       setNoteHtml(cleanedHtml);
 
@@ -181,6 +187,18 @@ export const BeautifulNote: React.FC = () => {
   const handleExport = async () => {
     if (!noteHtml) return;
     
+    // Close history panel and left sidebar when exporting
+    console.log('Export clicked - closing history panel and left sidebar');
+    setShowHistory(false);
+    setSidebarVisible(false);
+    
+    // Add delay to allow panels to close before taking screenshot/export
+    if (exportFormat === 'image') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } else if (exportFormat === 'pdf') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
     setIsExporting(true);
     try {
       if (exportFormat === 'html') {
@@ -193,16 +211,370 @@ export const BeautifulNote: React.FC = () => {
         a.click();
         URL.revokeObjectURL(url);
       } else if (exportFormat === 'image') {
-        // Convert to image (simplified - would need html2canvas in real implementation)
-        alert('Image export coming soon! For now, please use browser\'s print to PDF feature.');
+        // Simple and reliable PNG export method with proper styling and width
+        console.log('Starting PNG export...');
+        
+        // Get the actual dimensions from the iframe content with reasonable limits
+        let contentWidth = 1200; // Default balanced width
+        let contentHeight = 1000; // Default height
+        
+        if (iframeRef.current?.contentDocument) {
+          const iframeDoc = iframeRef.current.contentDocument;
+          const body = iframeDoc.body;
+          if (body) {
+            // Get the actual content dimensions but cap at reasonable size
+            const detectedWidth = Math.max(body.scrollWidth, body.offsetWidth);
+            contentWidth = Math.min(Math.max(detectedWidth, 1000), 1400); // Between 1000-1400px
+            contentHeight = Math.max(body.scrollHeight, body.offsetHeight, 1000);
+            console.log(`Detected content dimensions: ${detectedWidth}px, using: ${contentWidth}x${contentHeight}`);
+          }
+        }
+        
+        // Get styles from the iframe document
+        let iframeStyles = '';
+        if (iframeRef.current?.contentDocument) {
+          const iframeDoc = iframeRef.current.contentDocument;
+          const styleElements = iframeDoc.querySelectorAll('style');
+          iframeStyles = Array.from(styleElements).map(style => style.textContent || '').join('\n');
+        }
+        
+        // Create a temporary container in the main document with proper width
+        const container = document.createElement('div');
+        container.style.position = 'absolute';
+        container.style.left = '-9999px';
+        container.style.top = '0';
+        container.style.width = `${contentWidth}px`;
+        container.style.minWidth = `${contentWidth}px`;
+        container.style.background = '#f4f4f4';
+        container.style.fontFamily = "'Kalam', cursive";
+        container.style.padding = '60px'; // Increased padding significantly
+        container.style.paddingBottom = '100px'; // Extra bottom padding
+        container.style.boxSizing = 'border-box';
+        container.style.overflow = 'visible';
+        container.style.minHeight = 'auto';
+        container.style.height = 'auto';
+        
+        // Create and add a style element with iframe styles
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+          /* Import Google Fonts */
+          @import url('https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Kalam:wght@300;400;700&family=Caveat&display=swap');
+          
+          /* Original iframe styles */
+          ${iframeStyles}
+          
+          /* Additional style enforcement for container */
+          .temp-export-container {
+            font-family: 'Kalam', cursive;
+            color: #333;
+            background: #f4f4f4;
+            width: ${contentWidth}px;
+            min-width: ${contentWidth}px;
+          }
+          
+          .temp-export-container h1, .temp-export-container h2, .temp-export-container h3 {
+            font-family: 'Gochi Hand', cursive;
+          }
+          
+          .temp-export-container em {
+            font-family: 'Caveat', cursive;
+          }
+        `;
+        
+        // Add the style to document head temporarily
+        document.head.appendChild(styleElement);
+        
+        // Add class to container for styling
+        container.className = 'temp-export-container';
+        
+        // Set the HTML content directly from noteHtml with thorough cleaning
+        let cleanedContent = noteHtml;
+        
+        // Remove all markdown code block markers thoroughly
+        cleanedContent = cleanedContent
+          .replace(/```html\s*/g, '')           // Remove ```html at start
+          .replace(/```\s*$/g, '')              // Remove ``` at end
+          .replace(/^```\s*/g, '')              // Remove ``` at start
+          .replace(/```/g, '')                  // Remove any remaining ```
+          .replace(/^\s*html\s*/i, '')          // Remove standalone 'html' text
+          .trim();
+        
+        container.innerHTML = cleanedContent;
+        
+        // Add the container to the document
+        document.body.appendChild(container);
+        
+        try {
+          // Wait a moment for fonts to load and render
+          await new Promise(resolve => setTimeout(resolve, 1500)); // Increased wait time for better rendering
+          
+          // Get the actual height after content is rendered with more buffer
+          const actualHeight = Math.max(
+            container.scrollHeight,
+            container.offsetHeight,
+            container.getBoundingClientRect().height,
+            contentHeight // Also use the initial content height estimate
+          );
+          
+          console.log(`Container dimensions: ${contentWidth}x${actualHeight}`);
+          
+          // Use html2canvas with balanced layout settings and proper height
+          const canvas = await html2canvas(container, {
+            backgroundColor: '#f4f4f4',
+            scale: 1.5, // Balanced scale for good quality without being too large
+            useCORS: true,
+            allowTaint: false,
+            logging: false,
+            width: contentWidth,
+            height: actualHeight + 120, // Increased bottom padding significantly
+            windowWidth: contentWidth,
+            windowHeight: actualHeight + 120,
+            scrollX: 0,
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            ignoreElements: (element) => {
+              return element.tagName === 'SCRIPT' || element.tagName === 'NOSCRIPT';
+            }
+          });
+          
+          // Convert to PNG and download
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `note-${topic.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.png`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              console.log('PNG export successful!');
+            } else {
+              throw new Error('Failed to create blob from canvas');
+            }
+          }, 'image/png', 1.0);
+          
+        } catch (error) {
+          console.error('PNG export error:', error);
+          alert('Failed to export as PNG. Please try again or use the PDF export option.');
+        } finally {
+          // Clean up - remove the temporary container and style element
+          if (document.body.contains(container)) {
+            document.body.removeChild(container);
+          }
+          if (document.head.contains(styleElement)) {
+            document.head.removeChild(styleElement);
+          }
+        }
       } else if (exportFormat === 'pdf') {
-        // Print to PDF
-        if (iframeRef.current?.contentWindow) {
-          iframeRef.current.contentWindow.print();
+        // PDF export using screenshot-to-PDF method
+        console.log('Starting PDF export via screenshot...');
+        
+        // Get the actual dimensions from the iframe content with reasonable limits
+        let contentWidth = 1200; // Default balanced width
+        let contentHeight = 1000; // Default height
+        
+        if (iframeRef.current?.contentDocument) {
+          const iframeDoc = iframeRef.current.contentDocument;
+          const body = iframeDoc.body;
+          if (body) {
+            // Get the actual content dimensions but cap at reasonable size
+            const detectedWidth = Math.max(body.scrollWidth, body.offsetWidth);
+            contentWidth = Math.min(Math.max(detectedWidth, 1000), 1400); // Between 1000-1400px
+            contentHeight = Math.max(body.scrollHeight, body.offsetHeight, 1000);
+            console.log(`Detected content dimensions: ${detectedWidth}px, using: ${contentWidth}x${contentHeight}`);
+          }
+        }
+        
+        // Get styles from the iframe document
+        let iframeStyles = '';
+        if (iframeRef.current?.contentDocument) {
+          const iframeDoc = iframeRef.current.contentDocument;
+          const styleElements = iframeDoc.querySelectorAll('style');
+          iframeStyles = Array.from(styleElements).map(style => style.textContent || '').join('\n');
+        }
+        
+        // Create a temporary container in the main document with proper width
+        const container = document.createElement('div');
+        container.style.position = 'absolute';
+        container.style.left = '-9999px';
+        container.style.top = '0';
+        container.style.width = `${contentWidth}px`;
+        container.style.minWidth = `${contentWidth}px`;
+        container.style.background = '#f4f4f4';
+        container.style.fontFamily = "'Kalam', cursive";
+        container.style.padding = '60px'; // Increased padding significantly
+        container.style.paddingBottom = '100px'; // Extra bottom padding
+        container.style.boxSizing = 'border-box';
+        container.style.overflow = 'visible';
+        container.style.minHeight = 'auto';
+        container.style.height = 'auto';
+        
+        // Create and add a style element with iframe styles
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+          /* Import Google Fonts */
+          @import url('https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Kalam:wght@300;400;700&family=Caveat&display=swap');
+          
+          /* Original iframe styles */
+          ${iframeStyles}
+          
+          /* Additional style enforcement for container */
+          .temp-export-container {
+            font-family: 'Kalam', cursive;
+            color: #333;
+            background: #f4f4f4;
+            width: ${contentWidth}px;
+            min-width: ${contentWidth}px;
+          }
+          
+          .temp-export-container h1, .temp-export-container h2, .temp-export-container h3 {
+            font-family: 'Gochi Hand', cursive;
+          }
+          
+          .temp-export-container em {
+            font-family: 'Caveat', cursive;
+          }
+        `;
+        
+        // Add the style to document head temporarily
+        document.head.appendChild(styleElement);
+        
+        // Add class to container for styling
+        container.className = 'temp-export-container';
+        
+        // Set the HTML content directly from noteHtml with thorough cleaning
+        let cleanedContent = noteHtml;
+        
+        // Remove all markdown code block markers thoroughly
+        cleanedContent = cleanedContent
+          .replace(/```html\s*/g, '')           // Remove ```html at start
+          .replace(/```\s*$/g, '')              // Remove ``` at end
+          .replace(/^```\s*/g, '')              // Remove ``` at start
+          .replace(/```/g, '')                  // Remove any remaining ```
+          .replace(/^\s*html\s*/i, '')          // Remove standalone 'html' text
+          .trim();
+        
+        container.innerHTML = cleanedContent;
+        
+        // Add the container to the document
+        document.body.appendChild(container);
+        
+        try {
+          // Wait a moment for fonts to load and render
+          await new Promise(resolve => setTimeout(resolve, 1500)); // Increased wait time for better rendering
+          
+          // Get the actual height after content is rendered with more buffer
+          const actualHeight = Math.max(
+            container.scrollHeight,
+            container.offsetHeight,
+            container.getBoundingClientRect().height,
+            contentHeight // Also use the initial content height estimate
+          );
+          
+          console.log(`Container dimensions: ${contentWidth}x${actualHeight}`);
+          
+          // Use html2canvas to capture the screenshot
+          const canvas = await html2canvas(container, {
+            backgroundColor: '#f4f4f4',
+            scale: 1.5, // Balanced scale for good quality without being too large
+            useCORS: true,
+            allowTaint: false,
+            logging: false,
+            width: contentWidth,
+            height: actualHeight + 120, // Increased bottom padding significantly
+            windowWidth: contentWidth,
+            windowHeight: actualHeight + 120,
+            scrollX: 0,
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            ignoreElements: (element) => {
+              return element.tagName === 'SCRIPT' || element.tagName === 'NOSCRIPT';
+            }
+          });
+          
+          // Convert canvas to data URL
+          const imageDataUrl = canvas.toDataURL('image/png', 1.0);
+          
+          // Create a new window with the image for PDF conversion
+          const pdfWindow = window.open('', '_blank', 'width=1200,height=800');
+          if (pdfWindow) {
+            pdfWindow.document.write(`
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>${topic} - PDF</title>
+                <style>
+                  @page {
+                    margin: 0;
+                    size: A4;
+                  }
+                  body {
+                    margin: 0;
+                    padding: 0;
+                    display: flex;
+                    justify-content: center;
+                    align-items: flex-start;
+                    min-height: 100vh;
+                    background: white;
+                  }
+                  img {
+                    max-width: 100%;
+                    height: auto;
+                    display: block;
+                  }
+                  @media print {
+                    body {
+                      margin: 0;
+                      padding: 20px;
+                    }
+                    img {
+                      max-width: calc(100% - 40px);
+                      page-break-inside: avoid;
+                    }
+                  }
+                </style>
+              </head>
+              <body>
+                <img src="${imageDataUrl}" alt="Note Screenshot" />
+              </body>
+              </html>
+            `);
+            pdfWindow.document.close();
+            
+            // Wait for image to load, then trigger print
+            setTimeout(() => {
+              pdfWindow.focus();
+              pdfWindow.print();
+              console.log('PDF export (screenshot) successful!');
+            }, 1000);
+            
+            // Show instructions
+            setTimeout(() => {
+              alert('📄 PDF export ready!\n\n✅ A new window opened with your note screenshot.\n• Click Print or Ctrl+P\n• Choose "Save as PDF"\n• Your beautiful note will be saved as PDF!');
+            }, 1500);
+          } else {
+            alert('Please allow popups to open the PDF export window.');
+          }
+          
+        } catch (error) {
+          console.error('PDF export error:', error);
+          alert('Failed to export as PDF. Please try again or use the PNG export option.');
+        } finally {
+          // Clean up - remove the temporary container and style element
+          if (document.body.contains(container)) {
+            document.body.removeChild(container);
+          }
+          if (document.head.contains(styleElement)) {
+            document.head.removeChild(styleElement);
+          }
         }
       }
     } catch (err) {
       console.error('Export error:', err);
+      alert('Export failed. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -444,9 +816,9 @@ export const BeautifulNote: React.FC = () => {
                   onChange={(e) => setExportFormat(e.target.value as any)}
                   className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-black focus:border-transparent"
                 >
-                  <option value="html">HTML</option>
-                  <option value="pdf">PDF</option>
-                  <option value="image">Image</option>
+                  <option value="html">HTML File</option>
+                  <option value="image">PNG Image</option>
+                  <option value="pdf">PDF (Print)</option>
                 </select>
                 
                 <button
@@ -563,38 +935,6 @@ export const BeautifulNote: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* History Sidebar */}
-      {showHistory && (
-        <div className="absolute top-16 right-0 w-80 h-full bg-white shadow-xl z-20 border-l border-gray-200">
-          <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Notes</h3>
-            {history.length === 0 ? (
-              <p className="text-gray-500 text-sm">No notes generated yet</p>
-            ) : (
-              <div className="space-y-3">
-                {history.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
-                    onClick={() => loadFromHistory(item.id)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-900">{item.title}</span>
-                      <span className="text-xs text-gray-500">
-                        {templates.find(t => t.id === item.template)?.icon}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recently'} • {item.pages} page{item.pages !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -825,6 +1165,18 @@ export const BeautifulNote: React.FC = () => {
                           Copy HTML
                         </button>
                         <button
+                          onClick={async () => {
+                            const prevFormat = exportFormat;
+                            setExportFormat('image');
+                            await handleExport();
+                            setExportFormat(prevFormat);
+                          }}
+                          disabled={isExporting}
+                          className="w-full px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors duration-200 text-sm disabled:opacity-50"
+                        >
+                          {isExporting && exportFormat === 'image' ? 'Generating Image...' : 'Download as Image'}
+                        </button>
+                        <button
                           onClick={handleExport}
                           className="w-full px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors duration-200 text-sm"
                         >
@@ -918,7 +1270,14 @@ export const BeautifulNote: React.FC = () => {
               {/* Floating action buttons */}
               <div className="absolute top-4 right-4 z-10 flex space-x-2">
                 <button
-                  onClick={() => navigator.clipboard.writeText(noteHtml)}
+                  onClick={async () => {
+                    console.log('Copy HTML clicked - closing history panel and left sidebar');
+                    setShowHistory(false); // Close history panel
+                    setSidebarVisible(false); // Close left sidebar
+                    // Small delay to ensure panels are closed
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    navigator.clipboard.writeText(noteHtml);
+                  }}
                   className="p-2 bg-black/10 backdrop-blur-sm rounded-lg hover:bg-black/20 transition-colors duration-200"
                   title="Copy HTML"
                 >
@@ -926,9 +1285,42 @@ export const BeautifulNote: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
                 </button>
+
+                <button
+                  onClick={async () => {
+                    console.log('Quick image export clicked - closing history panel and left sidebar');
+                    setShowHistory(false); // Close history panel
+                    setSidebarVisible(false); // Close left sidebar
+                    // Delay to ensure panels are closed before screenshot
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    const prevFormat = exportFormat;
+                    setExportFormat('image');
+                    await handleExport();
+                    setExportFormat(prevFormat);
+                  }}
+                  disabled={isExporting}
+                  className="p-2 bg-black/10 backdrop-blur-sm rounded-lg hover:bg-black/20 transition-colors duration-200 disabled:opacity-50"
+                  title="Download as Image"
+                >
+                  {isExporting && exportFormat === 'image' ? (
+                    <svg className="w-5 h-5 text-gray-700 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </button>
                 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
+                    console.log('Print clicked - closing history panel and left sidebar');
+                    setShowHistory(false); // Close history panel
+                    setSidebarVisible(false); // Close left sidebar
+                    // Small delay to ensure panels are closed
+                    await new Promise(resolve => setTimeout(resolve, 200));
                     if (iframeRef.current?.contentWindow) {
                       iframeRef.current.contentWindow.print();
                     }
