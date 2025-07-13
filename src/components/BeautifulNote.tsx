@@ -238,7 +238,7 @@ export const BeautifulNote: React.FC = () => {
           iframeStyles = Array.from(styleElements).map(style => style.textContent || '').join('\n');
         }
         
-        // Create a temporary container in the main document with proper width
+        // Create a temporary container in the main document with minimal padding
         const container = document.createElement('div');
         container.style.position = 'absolute';
         container.style.left = '-9999px';
@@ -247,8 +247,8 @@ export const BeautifulNote: React.FC = () => {
         container.style.minWidth = `${contentWidth}px`;
         container.style.background = '#f4f4f4';
         container.style.fontFamily = "'Kalam', cursive";
-        container.style.padding = '60px'; // Increased padding significantly
-        container.style.paddingBottom = '100px'; // Extra bottom padding
+        container.style.padding = '15px'; // Minimal padding
+        container.style.paddingBottom = '15px'; // Minimal bottom padding
         container.style.boxSizing = 'border-box';
         container.style.overflow = 'visible';
         container.style.minHeight = 'auto';
@@ -308,7 +308,7 @@ export const BeautifulNote: React.FC = () => {
           // Wait a moment for fonts to load and render
           await new Promise(resolve => setTimeout(resolve, 1500)); // Increased wait time for better rendering
           
-          // Get the actual height after content is rendered with more buffer
+          // Get the actual height after content is rendered with minimal buffer
           const actualHeight = Math.max(
             container.scrollHeight,
             container.offsetHeight,
@@ -318,7 +318,7 @@ export const BeautifulNote: React.FC = () => {
           
           console.log(`Container dimensions: ${contentWidth}x${actualHeight}`);
           
-          // Use html2canvas with balanced layout settings and proper height
+          // Use html2canvas with minimal padding settings
           const canvas = await html2canvas(container, {
             backgroundColor: '#f4f4f4',
             scale: 1.5, // Balanced scale for good quality without being too large
@@ -326,9 +326,9 @@ export const BeautifulNote: React.FC = () => {
             allowTaint: false,
             logging: false,
             width: contentWidth,
-            height: actualHeight + 120, // Increased bottom padding significantly
+            height: actualHeight + 30, // Minimal bottom padding
             windowWidth: contentWidth,
-            windowHeight: actualHeight + 120,
+            windowHeight: actualHeight + 30,
             scrollX: 0,
             scrollY: 0,
             x: 0,
@@ -368,8 +368,8 @@ export const BeautifulNote: React.FC = () => {
           }
         }
       } else if (exportFormat === 'pdf') {
-        // PDF export using screenshot-to-PDF method
-        console.log('Starting PDF export via screenshot...');
+        // Direct PDF export using screenshot-to-PDF method
+        console.log('Starting direct PDF export...');
         
         // Get the actual dimensions from the iframe content with reasonable limits
         let contentWidth = 1200; // Default balanced width
@@ -395,7 +395,7 @@ export const BeautifulNote: React.FC = () => {
           iframeStyles = Array.from(styleElements).map(style => style.textContent || '').join('\n');
         }
         
-        // Create a temporary container in the main document with proper width
+        // Create a temporary container in the main document with minimal padding
         const container = document.createElement('div');
         container.style.position = 'absolute';
         container.style.left = '-9999px';
@@ -404,8 +404,8 @@ export const BeautifulNote: React.FC = () => {
         container.style.minWidth = `${contentWidth}px`;
         container.style.background = '#f4f4f4';
         container.style.fontFamily = "'Kalam', cursive";
-        container.style.padding = '60px'; // Increased padding significantly
-        container.style.paddingBottom = '100px'; // Extra bottom padding
+        container.style.padding = '15px'; // Minimal padding
+        container.style.paddingBottom = '15px'; // Minimal bottom padding
         container.style.boxSizing = 'border-box';
         container.style.overflow = 'visible';
         container.style.minHeight = 'auto';
@@ -465,7 +465,7 @@ export const BeautifulNote: React.FC = () => {
           // Wait a moment for fonts to load and render
           await new Promise(resolve => setTimeout(resolve, 1500)); // Increased wait time for better rendering
           
-          // Get the actual height after content is rendered with more buffer
+          // Get the actual height after content is rendered with minimal buffer
           const actualHeight = Math.max(
             container.scrollHeight,
             container.offsetHeight,
@@ -475,7 +475,7 @@ export const BeautifulNote: React.FC = () => {
           
           console.log(`Container dimensions: ${contentWidth}x${actualHeight}`);
           
-          // Use html2canvas to capture the screenshot
+          // Use html2canvas to capture the screenshot with minimal padding
           const canvas = await html2canvas(container, {
             backgroundColor: '#f4f4f4',
             scale: 1.5, // Balanced scale for good quality without being too large
@@ -483,9 +483,9 @@ export const BeautifulNote: React.FC = () => {
             allowTaint: false,
             logging: false,
             width: contentWidth,
-            height: actualHeight + 120, // Increased bottom padding significantly
+            height: actualHeight + 30, // Minimal bottom padding
             windowWidth: contentWidth,
-            windowHeight: actualHeight + 120,
+            windowHeight: actualHeight + 30,
             scrollX: 0,
             scrollY: 0,
             x: 0,
@@ -495,69 +495,56 @@ export const BeautifulNote: React.FC = () => {
             }
           });
           
-          // Convert canvas to data URL
-          const imageDataUrl = canvas.toDataURL('image/png', 1.0);
+          // Convert canvas to image data
+          const imageData = canvas.toDataURL('image/png');
           
-          // Create a new window with the image for PDF conversion
-          const pdfWindow = window.open('', '_blank', 'width=1200,height=800');
-          if (pdfWindow) {
-            pdfWindow.document.write(`
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <title>${topic} - PDF</title>
-                <style>
-                  @page {
-                    margin: 0;
-                    size: A4;
-                  }
-                  body {
-                    margin: 0;
-                    padding: 0;
-                    display: flex;
-                    justify-content: center;
-                    align-items: flex-start;
-                    min-height: 100vh;
-                    background: white;
-                  }
-                  img {
-                    max-width: 100%;
-                    height: auto;
-                    display: block;
-                  }
-                  @media print {
-                    body {
-                      margin: 0;
-                      padding: 20px;
-                    }
-                    img {
-                      max-width: calc(100% - 40px);
-                      page-break-inside: avoid;
-                    }
-                  }
-                </style>
-              </head>
-              <body>
-                <img src="${imageDataUrl}" alt="Note Screenshot" />
-              </body>
-              </html>
-            `);
-            pdfWindow.document.close();
-            
-            // Wait for image to load, then trigger print
-            setTimeout(() => {
-              pdfWindow.focus();
-              pdfWindow.print();
-              console.log('PDF export (screenshot) successful!');
-            }, 1000);
-            
-            // Show instructions
-            setTimeout(() => {
-              alert('📄 PDF export ready!\n\n✅ A new window opened with your note screenshot.\n• Click Print or Ctrl+P\n• Choose "Save as PDF"\n• Your beautiful note will be saved as PDF!');
-            }, 1500);
-          } else {
-            alert('Please allow popups to open the PDF export window.');
+          // Calculate PDF dimensions (A4 size with some margin)
+          const pdfWidth = 210; // A4 width in mm
+          const pdfHeight = 297; // A4 height in mm
+          const margin = 10; // 10mm margin
+          const maxImageWidth = pdfWidth - (margin * 2);
+          const maxImageHeight = pdfHeight - (margin * 2);
+          
+          // Calculate image dimensions to fit in PDF
+          const imageWidth = canvas.width;
+          const imageHeight = canvas.height;
+          const aspectRatio = imageWidth / imageHeight;
+          
+          let finalWidth = maxImageWidth;
+          let finalHeight = maxImageWidth / aspectRatio;
+          
+          // If height exceeds page, scale down
+          if (finalHeight > maxImageHeight) {
+            finalHeight = maxImageHeight;
+            finalWidth = maxImageHeight * aspectRatio;
           }
+          
+          // Create PDF
+          const pdf = new jsPDF({
+            orientation: finalHeight > finalWidth ? 'portrait' : 'landscape',
+            unit: 'mm',
+            format: 'a4'
+          });
+          
+          // Add the image to PDF
+          pdf.addImage(
+            imageData,
+            'PNG',
+            margin,
+            margin,
+            finalWidth,
+            finalHeight,
+            undefined,
+            'FAST'
+          );
+          
+          // Generate filename
+          const filename = `note-${topic.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`;
+          
+          // Download the PDF
+          pdf.save(filename);
+          
+          console.log('PDF export (direct download) successful!');
           
         } catch (error) {
           console.error('PDF export error:', error);
