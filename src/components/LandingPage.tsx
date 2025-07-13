@@ -15,23 +15,47 @@ export const LandingPage: React.FC = () => {
 
   useEffect(() => {
     setMounted(true);
+    
+    // Add a small delay then trigger animations
+    const timer = setTimeout(() => {
+      // Remove the opacity-0 class that's hiding elements
+      const elements = document.querySelectorAll('.animate-on-load');
+      elements.forEach((el, index) => {
+        setTimeout(() => {
+          el.classList.remove('animate-on-load');
+        }, index * 100); // Stagger the animations
+      });
+    }, 200);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const handlePageChange = (page: string) => {
     if (page === currentPage) return;
+    
     setIsTransitioning(true);
+    setCurrentPage(page);
+    
+    // Smooth scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Re-trigger animations for new content
     setTimeout(() => {
-      setCurrentPage(page);
       setIsTransitioning(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 150);
+      const elements = document.querySelectorAll('.animate-on-load');
+      elements.forEach((el, index) => {
+        setTimeout(() => {
+          el.classList.remove('animate-on-load');
+        }, index * 50);
+      });
+    }, 100);
   };
 
   const handleShowApp = () => {
     setIsTransitioning(true);
     setTimeout(() => {
       setShowApp(true);
-    }, 300);
+    }, 150);
   };
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
@@ -130,19 +154,20 @@ export const LandingPage: React.FC = () => {
 
   // Navigation component
   const Navigation = () => (
-    <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300">
+    <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300 animate-on-load animate-fade-in-down">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div 
-            className="flex items-center space-x-2 cursor-pointer group transition-all duration-200" 
+            className="flex items-center space-x-2 cursor-pointer group transition-all duration-200 animate-on-load animate-fade-in-left" 
             onClick={() => handlePageChange('home')}
+            style={{ animationDelay: '0.1s' }}
           >
             <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
               <div className="w-4 h-4 bg-white rounded-sm"></div>
             </div>
             <span className="text-xl font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-200">Notopy</span>
           </div>
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-8 animate-on-load animate-fade-in-right" style={{ animationDelay: '0.2s' }}>
             <button 
               onClick={() => handlePageChange('features')}
               className={`text-sm font-medium transition-all duration-200 relative ${
@@ -220,18 +245,19 @@ export const LandingPage: React.FC = () => {
         
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-100 animate-slideInUp">
+          <div className="md:hidden bg-white border-t border-gray-100 animate-fade-in-down">
             <div className="px-6 py-4 space-y-4">
               <button 
                 onClick={() => {
                   handlePageChange('features');
                   setMobileMenuOpen(false);
                 }}
-                className={`block w-full text-left text-sm font-medium transition-all duration-200 py-2 ${
+                className={`block w-full text-left text-sm font-medium transition-all duration-200 py-2 landing-item animate-on-load animate-fade-in-left ${
                   currentPage === 'features' 
                     ? 'text-gray-900 font-semibold' 
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
+                style={{ animationDelay: '0.1s' }}
               >
                 Features
               </button>
@@ -337,37 +363,37 @@ export const LandingPage: React.FC = () => {
 
   // Home page content
   const HomePage = () => (
-    <div className="animate-fadeIn">
+    <div className="page-transition">
       {/* Hero */}
-      <section className="max-w-7xl mx-auto px-6 py-24">
+      <section className="max-w-7xl mx-auto px-6 py-24 landing-section animate-on-load animate-fade-in-up">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-7xl font-light text-gray-900 mb-8 leading-[1.1] tracking-tight animate-slideInUp">
+          <h1 className="text-7xl font-light text-gray-900 mb-8 leading-[1.1] tracking-tight animate-on-load animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             AI-powered note
             <br />
             <span className="font-medium">generation platform</span>
           </h1>
           
-          <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed font-light animate-slideInUp" style={{ animationDelay: '0.2s' }}>
+          <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed font-light animate-on-load animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
             Transform any topic into professionally structured, visually enhanced notes 
             using advanced AI technology. Built for researchers, students, and professionals.
           </p>
 
-          <div className="flex items-center justify-center space-x-4 mb-16 animate-slideInUp" style={{ animationDelay: '0.4s' }}>
+          <div className="flex items-center justify-center space-x-4 mb-16 animate-on-load animate-scale-in" style={{ animationDelay: '0.5s' }}>
             <a
               href="/signup"
-              className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
+              className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg hover-lift"
             >
               Start generating notes
             </a>
             <button
               onClick={() => handlePageChange('features')}
-              className="border border-gray-300 text-gray-900 px-8 py-4 rounded-md font-medium hover:border-gray-400 transition-all duration-200 hover:shadow-md hover:bg-gray-50"
+              className="border border-gray-300 text-gray-900 px-8 py-4 rounded-md font-medium hover:border-gray-400 transition-all duration-200 hover:shadow-md hover:bg-gray-50 hover-lift"
             >
               View features
             </button>
           </div>
 
-          <div className="text-sm text-gray-500 space-x-6 animate-slideInUp" style={{ animationDelay: '0.6s' }}>
+          <div className="text-sm text-gray-500 space-x-6 animate-on-load animate-fade-in-up" style={{ animationDelay: '0.7s' }}>
             <span>No signup required</span>
             <span>•</span>
             <span>Free tier available</span>
@@ -378,9 +404,9 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Features Preview */}
-      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-100">
+      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-100 landing-section animate-on-load animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-          <div className="space-y-8 animate-slideInLeft">
+          <div className="space-y-8 animate-on-load animate-fade-in-left" style={{ animationDelay: '0.3s' }}>
             <div>
               <h2 className="text-4xl font-light text-gray-900 mb-6">
                 Intelligent content
@@ -394,13 +420,13 @@ export const LandingPage: React.FC = () => {
             </div>
             
             <div className="grid grid-cols-2 gap-8">
-              <div className="transform hover:scale-105 transition-transform duration-200">
+              <div className="transform hover:scale-105 transition-transform duration-200 hover-lift landing-item animate-on-load animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
                 <h3 className="text-lg font-medium text-gray-900 mb-3">Multi-format output</h3>
                 <p className="text-gray-600 text-sm leading-relaxed">
                   Study guides, mind maps, timelines, comparison charts, and more.
                 </p>
               </div>
-              <div className="transform hover:scale-105 transition-transform duration-200">
+              <div className="transform hover:scale-105 transition-transform duration-200 hover-lift landing-item animate-on-load animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
                 <h3 className="text-lg font-medium text-gray-900 mb-3">Visual enhancement</h3>
                 <p className="text-gray-600 text-sm leading-relaxed">
                   Handwriting fonts, colors, and layouts that improve retention.
@@ -409,9 +435,9 @@ export const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-8 flex items-center justify-center animate-slideInRight hover:bg-gray-100 transition-colors duration-300">
+          <div className="bg-gray-50 rounded-lg p-8 flex items-center justify-center animate-on-load animate-fade-in-right hover:bg-gray-100 transition-colors duration-300 hover-lift" style={{ animationDelay: '0.4s' }}>
             <div className="text-center">
-              <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4 animate-on-load animate-scale-in" style={{ animationDelay: '0.7s' }}>
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -423,14 +449,14 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-100">
+      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-100 landing-section animate-on-load animate-slide-in-up" style={{ animationDelay: '0.4s' }}>
         <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-4xl font-light text-gray-900 mb-6 animate-slideInUp">
+          <h2 className="text-4xl font-light text-gray-900 mb-6 animate-on-load animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
             Trusted by thousands
             <br />
             <span className="font-medium">of professionals</span>
           </h2>
-          <p className="text-lg text-gray-600 leading-relaxed font-light animate-slideInUp" style={{ animationDelay: '0.2s' }}>
+          <p className="text-lg text-gray-600 leading-relaxed font-light animate-on-load animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
             See how NoteCraft is transforming the way people create and organize their notes.
           </p>
         </div>
@@ -439,8 +465,8 @@ export const LandingPage: React.FC = () => {
           {testimonials.map((testimonial, index) => (
             <div 
               key={index} 
-              className="bg-white rounded-lg p-8 border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg transform hover:scale-105 animate-slideInUp"
-              style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+              className="bg-white rounded-lg p-8 border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg transform hover:scale-105 landing-item animate-on-load animate-fade-in-up hover-lift"
+              style={{ animationDelay: `${0.7 + (0.1 * index)}s` }}
             >
               <div className="flex mb-4">
                 {[...Array(testimonial.rating)].map((_, i) => (
