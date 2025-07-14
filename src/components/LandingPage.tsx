@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { BeautifulNote } from './BeautifulNote';
 import { CoinDisplay } from './CoinDisplay';
+import { PayPalSubscription } from './PayPalSubscription';
+import { EnterpriseUpgrade } from './EnterpriseUpgrade';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 
@@ -896,7 +898,7 @@ export const LandingPage: React.FC = () => {
             <div className="text-center mb-8">
               <h3 className="text-2xl font-medium text-gray-900 mb-2">Pro</h3>
               <p className="text-gray-600 mb-4">For students and professionals</p>
-              <div className="text-4xl font-light text-gray-900">$12</div>
+              <div className="text-4xl font-light text-gray-900">$4.99</div>
               <div className="text-gray-600">per month + 100 bonus coins</div>
             </div>
             <ul className="space-y-4 mb-8">
@@ -910,7 +912,7 @@ export const LandingPage: React.FC = () => {
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">Unlimited monthly notes</span>
+                <span className="text-gray-600">200 monthly notes</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -931,19 +933,21 @@ export const LandingPage: React.FC = () => {
                 <span className="text-gray-600">Priority support</span>
               </li>
             </ul>
-            <button
-              onClick={() => setShowApp(true)}
-              className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
-            >
-              Upgrade to Pro
-            </button>
+            <div className="space-y-2">
+              <PayPalSubscription 
+                planId="P-37D43660E4028554FNB2I7FQ"
+                onSuccess={(subscriptionId) => {
+                  console.log('Subscription successful:', subscriptionId);
+                }}
+              />
+            </div>
           </div>
 
           <div className="p-8 bg-white rounded-lg border border-gray-200">
             <div className="text-center mb-8">
               <h3 className="text-2xl font-medium text-gray-900 mb-2">Enterprise</h3>
               <p className="text-gray-600 mb-4">For teams and organizations</p>
-              <div className="text-4xl font-light text-gray-900">$49</div>
+              <div className="text-4xl font-light text-gray-900">$19</div>
               <div className="text-gray-600">per month + 200 bonus coins</div>
             </div>
             <ul className="space-y-4 mb-8">
@@ -957,7 +961,7 @@ export const LandingPage: React.FC = () => {
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">Everything in Pro</span>
+                <span className="text-gray-600">Unlimited monthly notes</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -978,9 +982,7 @@ export const LandingPage: React.FC = () => {
                 <span className="text-gray-600">24/7 support</span>
               </li>
             </ul>
-            <button className="w-full border border-gray-300 text-gray-900 px-6 py-3 rounded-md font-medium hover:border-gray-400 transition-colors">
-              Contact sales
-            </button>
+            <EnterpriseUpgrade />
           </div>
         </div>
 

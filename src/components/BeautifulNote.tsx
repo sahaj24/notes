@@ -180,9 +180,13 @@ export const BeautifulNote: React.FC = () => {
       return;
     }
 
-    // Check tier limits for free users
-    if (user && profile && profile.tier === 'free' && profile.monthly_note_limit && profile.monthly_notes_count >= profile.monthly_note_limit) {
-      setCoinWarning(`You've reached your monthly limit of ${profile.monthly_note_limit} notes. Please upgrade to Pro for unlimited notes.`);
+    // Check tier limits for free and pro users
+    if (user && profile && profile.monthly_note_limit && profile.monthly_notes_count >= profile.monthly_note_limit) {
+      if (profile.tier === 'free') {
+        setCoinWarning(`You've reached your monthly limit of ${profile.monthly_note_limit} notes. Please upgrade to Pro for 200 notes or Enterprise for unlimited notes.`);
+      } else if (profile.tier === 'pro') {
+        setCoinWarning(`You've reached your monthly limit of ${profile.monthly_note_limit} notes. Please upgrade to Enterprise for unlimited notes.`);
+      }
       return;
     }
 

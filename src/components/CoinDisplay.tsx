@@ -99,8 +99,7 @@ export const CoinDisplay: React.FC<CoinDisplayProps> = ({
       {showTransactions && (
         <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
           <div className="p-4 border-b border-gray-100">
-            <h3 className="font-medium text-gray-900">Recent Transactions</h3>
-            <p className="text-sm text-gray-600">Last 20 transactions</p>
+            <h3 className="font-medium text-gray-900">Recent Transaction</h3>
           </div>
           
           <div className="max-h-64 overflow-y-auto">

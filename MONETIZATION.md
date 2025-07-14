@@ -16,8 +16,8 @@ A comprehensive coin-based monetization system for the Notopy AI note generation
 | Tier | Price | Monthly Limit | Signup Bonus | Features |
 |------|-------|---------------|--------------|----------|
 | **Free** | $0 | 10 notes | 30 coins | Basic formats, Image export |
-| **Pro** | $12 | Unlimited | 100 coins | All formats, PDF export, Priority support |
-| **Enterprise** | $49 | Unlimited | 200 coins | Team collaboration, Custom branding, 24/7 support |
+| **Pro** | $4.99 | 200 notes | 100 coins | All formats, PDF export, Priority support |
+| **Enterprise** | $19 | Unlimited | 200 coins | Team collaboration, Custom branding, 24/7 support |
 
 ## 🗄️ Database Schema
 
@@ -92,8 +92,8 @@ const { profile, transactions, deductCoins, addCoins } = useUserProfile();
 
 ### Cost Structure
 - **Free Tier**: 30 coins + 10 notes/month limit
-- **Pro Tier**: $12/month + 100 bonus coins + unlimited notes
-- **Enterprise**: $49/month + 200 bonus coins + team features
+- **Pro Tier**: $4.99/month + 100 bonus coins + 200 notes/month
+- **Enterprise**: $19/month + 200 bonus coins + unlimited notes
 
 ## 📊 Analytics & Tracking
 
