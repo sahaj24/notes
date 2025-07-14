@@ -9,8 +9,8 @@ export async function POST(request: NextRequest) {
   try {
     console.log('Upgrade API called');
     
-    const { tier, subscriptionId, paymentMethod } = await request.json();
-    console.log('Request data:', { tier, subscriptionId, paymentMethod });
+    const { tier, subscriptionId, paymentId, paymentMethod, coins, amount } = await request.json();
+    console.log('Request data:', { tier, subscriptionId, paymentId, paymentMethod, coins, amount });
     
     // Get user from auth header
     const authHeader = request.headers.get('authorization');
@@ -44,18 +44,18 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Current profile:', currentProfile);
-    const newCoins = 200; // Set total coins to 200 for Pro tier
+    const coinsToAdd = coins || 200; // Use provided coins or default to 200
+    const newCoins = (currentProfile?.coins || 10) + coinsToAdd; // Add to existing coins
     console.log('New coin balance will be:', newCoins);
 
     // Try a simple update first to test permissions
     console.log('Attempting to update user profile...');
     
-    // Update user profile to Pro tier
+    // Update user profile with new coins
     const { data: updateData, error: updateError } = await supabase
       .from('user_profiles')
       .update({
-        tier: 'pro',
-        coins: newCoins, // Set total coins to 200
+        coins: newCoins, // Add coins to existing balance
         updated_at: new Date().toISOString()
       })
       .eq('id', user.id)
@@ -75,15 +75,17 @@ export async function POST(request: NextRequest) {
 
     console.log('User profile updated successfully');
 
-    // Record subscription
+    // Record subscription/payment
     const { error: subscriptionError } = await supabase
       .from('user_subscriptions')
       .insert({
         user_id: user.id,
-        subscription_id: subscriptionId,
-        tier: tier,
+        subscription_id: subscriptionId || paymentId,
+        tier: tier === 'one-time' ? 'coin_purchase' : tier,
         payment_method: paymentMethod || 'paypal',
-        status: 'active'
+        status: 'active',
+        amount: amount || '0',
+        coins_granted: coinsToAdd
       });
 
     if (subscriptionError) {
@@ -91,20 +93,21 @@ export async function POST(request: NextRequest) {
       // Don't fail the request for subscription logging issues
     }
 
-    // Record transaction for coin allocation
+    // Record transaction for coin purchase
     const { error: transError } = await supabase
       .from('user_transactions')
       .insert({
         user_id: user.id,
-        transaction_type: 'subscription',
-        amount: 200,
-        previous_balance: currentProfile?.coins || 0,
+        transaction_type: 'purchase',
+        amount: coinsToAdd,
+        previous_balance: currentProfile?.coins || 10,
         new_balance: newCoins,
-        description: 'Pro subscription coin allocation',
+        description: `Coin purchase - ${coinsToAdd} coins`,
         metadata: {
           subscription_id: subscriptionId,
+          payment_id: paymentId,
           payment_method: paymentMethod,
-          tier_upgrade: 'pro'
+          purchase_amount: amount
         }
       });
 
@@ -137,9 +140,8 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ 
       success: true, 
-      message: 'Successfully upgraded to Pro tier',
-      tier: 'pro',
-      total_coins: 200,
+      message: `Successfully added ${coinsToAdd} coins to your account`,
+      coins_added: coinsToAdd,
       new_coin_balance: newCoins
     });
 

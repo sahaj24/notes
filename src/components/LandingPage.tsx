@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { BeautifulNote } from './BeautifulNote';
 import { CoinDisplay } from './CoinDisplay';
 import { PayPalSubscription } from './PayPalSubscription';
-import { EnterpriseUpgrade } from './EnterpriseUpgrade';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 
@@ -12,13 +12,14 @@ export const LandingPage: React.FC = () => {
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const [showApp, setShowApp] = useState(false);
-  const [currentPage, setCurrentPage] = useState('home');
   const [mounted, setMounted] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubmitted, setNewsletterSubmitted] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<{ name: string; amount: string; coins: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -36,27 +37,6 @@ export const LandingPage: React.FC = () => {
     
     return () => clearTimeout(timer);
   }, []);
-
-  const handlePageChange = (page: string) => {
-    if (page === currentPage) return;
-    
-    setIsTransitioning(true);
-    setCurrentPage(page);
-    
-    // Smooth scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    // Re-trigger animations for new content
-    setTimeout(() => {
-      setIsTransitioning(false);
-      const elements = document.querySelectorAll('.animate-on-load');
-      elements.forEach((el, index) => {
-        setTimeout(() => {
-          el.classList.remove('animate-on-load');
-        }, index * 50);
-      });
-    }, 100);
-  };
 
   const handleShowApp = () => {
     setIsTransitioning(true);
@@ -80,6 +60,16 @@ export const LandingPage: React.FC = () => {
 
   const toggleFaq = (index: number) => {
     setExpandedFaq(expandedFaq === index ? null : index);
+  };
+
+  const openModal = (planName: string, amount: string, coins: number) => {
+    setSelectedPlan({ name: planName, amount, coins });
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedPlan(null);
   };
 
   const faqData = [
@@ -151,6 +141,43 @@ export const LandingPage: React.FC = () => {
 
   if (!mounted) return null;
 
+  // Modal component
+  const PaymentModal = () => (
+    showModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn">
+        <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 relative animate-scaleIn">
+          <button
+            onClick={closeModal}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          {selectedPlan && (
+            <div className="text-center">
+              <h3 className="text-2xl font-semibold text-gray-900 mb-2">{selectedPlan.name}</h3>
+              <p className="text-gray-600 mb-4">${selectedPlan.amount}</p>
+              
+              <div className="mt-6">
+                <PayPalSubscription 
+                  planId="P-37D43660E4028554FNB2I7FQ"
+                  amount={selectedPlan.amount}
+                  coins={selectedPlan.coins}
+                  onSuccess={(paymentId) => {
+                    console.log('Payment successful:', paymentId);
+                    closeModal();
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  );
+
   if (showApp) {
     return (
       <div className="animate-fadeIn">
@@ -164,56 +191,35 @@ export const LandingPage: React.FC = () => {
     <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300 animate-on-load animate-fade-in-down">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <div 
+          <Link 
+            href="/"
             className="flex items-center space-x-2 cursor-pointer group transition-all duration-200 animate-on-load animate-fade-in-left" 
-            onClick={() => handlePageChange('home')}
             style={{ animationDelay: '0.1s' }}
           >
             <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
               <div className="w-4 h-4 bg-white rounded-sm"></div>
             </div>
             <span className="text-xl font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-200">Notopy</span>
-          </div>
+          </Link>
           <nav className="hidden md:flex items-center space-x-8 animate-on-load animate-fade-in-right" style={{ animationDelay: '0.2s' }}>
-            <button 
-              onClick={() => handlePageChange('features')}
-              className={`text-sm font-medium transition-all duration-200 relative ${
-                currentPage === 'features' 
-                  ? 'text-gray-900' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+            <Link 
+              href="/features"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
             >
               Features
-              {currentPage === 'features' && (
-                <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-black rounded-full animate-slideIn"></div>
-              )}
-            </button>
-            <button 
-              onClick={() => handlePageChange('pricing')}
-              className={`text-sm font-medium transition-all duration-200 relative ${
-                currentPage === 'pricing' 
-                  ? 'text-gray-900' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+            </Link>
+            <Link 
+              href="/pricing"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
             >
               Pricing
-              {currentPage === 'pricing' && (
-                <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-black rounded-full animate-slideIn"></div>
-              )}
-            </button>
-            <button 
-              onClick={() => handlePageChange('about')}
-              className={`text-sm font-medium transition-all duration-200 relative ${
-                currentPage === 'about' 
-                  ? 'text-gray-900' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+            </Link>
+            <Link 
+              href="/about"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
             >
               About
-              {currentPage === 'about' && (
-                <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-black rounded-full animate-slideIn"></div>
-              )}
-            </button>
+            </Link>
             <div className="flex items-center space-x-3">
               {user ? (
                 <>
@@ -227,18 +233,18 @@ export const LandingPage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <a 
+                  <Link 
                     href="/login"
                     className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200"
                   >
                     Sign In
-                  </a>
-                  <a 
+                  </Link>
+                  <Link 
                     href="/signup"
                     className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
                   >
                     Get Started
-                  </a>
+                  </Link>
                 </>
               )}
             </div>
@@ -268,46 +274,28 @@ export const LandingPage: React.FC = () => {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100 animate-fade-in-down">
             <div className="px-6 py-4 space-y-4">
-              <button 
-                onClick={() => {
-                  handlePageChange('features');
-                  setMobileMenuOpen(false);
-                }}
-                className={`block w-full text-left text-sm font-medium transition-all duration-200 py-2 landing-item animate-on-load animate-fade-in-left ${
-                  currentPage === 'features' 
-                    ? 'text-gray-900 font-semibold' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+              <Link 
+                href="/features"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 landing-item animate-on-load animate-fade-in-left text-gray-600 hover:text-gray-900"
                 style={{ animationDelay: '0.1s' }}
+                onClick={() => setMobileMenuOpen(false)}
               >
                 Features
-              </button>
-              <button 
-                onClick={() => {
-                  handlePageChange('pricing');
-                  setMobileMenuOpen(false);
-                }}
-                className={`block w-full text-left text-sm font-medium transition-all duration-200 py-2 ${
-                  currentPage === 'pricing' 
-                    ? 'text-gray-900 font-semibold' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+              </Link>
+              <Link 
+                href="/pricing"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
+                onClick={() => setMobileMenuOpen(false)}
               >
                 Pricing
-              </button>
-              <button 
-                onClick={() => {
-                  handlePageChange('about');
-                  setMobileMenuOpen(false);
-                }}
-                className={`block w-full text-left text-sm font-medium transition-all duration-200 py-2 ${
-                  currentPage === 'about' 
-                    ? 'text-gray-900 font-semibold' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+              </Link>
+              <Link 
+                href="/about"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
+                onClick={() => setMobileMenuOpen(false)}
               >
                 About
-              </button>
+              </Link>
               <div className="border-t border-gray-100 pt-4 mt-4">
                 {user ? (
                   <>
@@ -367,15 +355,15 @@ export const LandingPage: React.FC = () => {
           <div className="animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
             <h4 className="font-medium text-gray-900 mb-4">Product</h4>
             <div className="space-y-2 text-sm text-gray-600">
-              <button onClick={() => handlePageChange('features')} className="block hover:text-gray-900 transition-colors duration-200">Features</button>
-              <button onClick={() => handlePageChange('pricing')} className="block hover:text-gray-900 transition-colors duration-200">Pricing</button>
+              <Link href="/features" className="block hover:text-gray-900 transition-colors duration-200">Features</Link>
+              <Link href="/pricing" className="block hover:text-gray-900 transition-colors duration-200">Pricing</Link>
               <button onClick={handleShowApp} className="block hover:text-gray-900 transition-colors duration-200">Try Now</button>
             </div>
           </div>
           <div className="animate-fadeInUp" style={{ animationDelay: '0.3s' }}>
             <h4 className="font-medium text-gray-900 mb-4">Company</h4>
             <div className="space-y-2 text-sm text-gray-600">
-              <button onClick={() => handlePageChange('about')} className="block hover:text-gray-900 transition-colors duration-200">About</button>
+              <Link href="/about" className="block hover:text-gray-900 transition-colors duration-200">About</Link>
               <a href="#" className="block hover:text-gray-900 transition-colors duration-200">Blog</a>
               <a href="#" className="block hover:text-gray-900 transition-colors duration-200">Contact</a>
             </div>
@@ -403,82 +391,11 @@ export const LandingPage: React.FC = () => {
 
   // Home page content
   const HomePage = () => (
-    <div className="page-transition">
+    <div className="page-transition pt-8">
       {/* Hero */}
-      <section className="max-w-7xl mx-auto px-6 py-24 landing-section animate-on-load animate-fade-in-up relative">
-        {/* Animated Background */}
-        <div className="hero-animation-container">
-          {/* Grid Pattern Background */}
-          <div className="grid-pattern"></div>
-          
-          {/* Morphing Blob */}
-          <div className="morphing-blob"></div>
-          
-          {/* Floating Geometric Shapes */}
-          <div className="floating-shape">
-            <svg width="60" height="60" viewBox="0 0 60 60">
-              <rect width="60" height="60" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2" transform="rotate(45 30 30)"/>
-            </svg>
-          </div>
-          <div className="floating-shape">
-            <svg width="40" height="40" viewBox="0 0 40 40">
-              <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/>
-            </svg>
-          </div>
-          <div className="floating-shape">
-            <svg width="50" height="50" viewBox="0 0 50 50">
-              <polygon points="25,5 45,35 5,35" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/>
-            </svg>
-          </div>
-          <div className="floating-shape">
-            <svg width="70" height="30" viewBox="0 0 70 30">
-              <ellipse cx="35" cy="15" rx="33" ry="13" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/>
-            </svg>
-          </div>
-          <div className="floating-shape">
-            <svg width="45" height="45" viewBox="0 0 45 45">
-              <path d="M22.5,2 L42,22.5 L22.5,43 L3,22.5 Z" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="2"/>
-            </svg>
-          </div>
-          
-          {/* Pulsing Circles */}
-          <div className="pulse-circle"></div>
-          <div className="pulse-circle"></div>
-          <div className="pulse-circle"></div>
-          
-          {/* Diagonal Sliding Elements */}
-          <div className="diagonal-slider"></div>
-          <div className="diagonal-slider"></div>
-          <div className="diagonal-slider"></div>
-          <div className="diagonal-slider"></div>
-          <div className="diagonal-slider"></div>
-          
-          {/* Scattered Dots */}
-          <div className="dot-scatter"></div>
-          <div className="dot-scatter"></div>
-          <div className="dot-scatter"></div>
-          <div className="dot-scatter"></div>
-          <div className="dot-scatter"></div>
-          <div className="dot-scatter"></div>
-          
-          {/* Connecting Lines */}
-          <div className="connecting-line"></div>
-          <div className="connecting-line"></div>
-          <div className="connecting-line"></div>
-          
-          {/* SVG Drawing Paths */}
-          <svg className="absolute top-0 left-0 w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
-            <path className="drawing-path" d="M100,200 Q300,100 500,200 T900,200" strokeLinecap="round"/>
-            <path className="drawing-path" d="M200,400 Q400,300 600,400 T1000,400" strokeLinecap="round" style={{ animationDelay: '2s' }}/>
-            <path className="drawing-path" d="M50,600 Q250,500 450,600 T850,600" strokeLinecap="round" style={{ animationDelay: '4s' }}/>
-            <circle className="drawing-path" cx="300" cy="150" r="50" style={{ animationDelay: '1s' }}/>
-            <circle className="drawing-path" cx="800" cy="300" r="70" style={{ animationDelay: '3s' }}/>
-            <circle className="drawing-path" cx="600" cy="500" r="40" style={{ animationDelay: '5s' }}/>
-          </svg>
-        </div>
-
+      <section className="max-w-7xl mx-auto px-6 py-24 landing-section animate-on-load animate-fade-in-up">
         {/* Hero Content */}
-        <div className="max-w-4xl mx-auto text-center hero-content-overlay rounded-lg p-8">
+        <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-7xl font-light text-gray-900 mb-8 leading-[1.1] tracking-tight animate-on-load animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             AI-powered note
             <br />
@@ -491,18 +408,18 @@ export const LandingPage: React.FC = () => {
           </p>
 
           <div className="flex items-center justify-center space-x-4 mb-16 animate-on-load animate-scale-in" style={{ animationDelay: '0.5s' }}>
-            <a
+            <Link
               href="/signup"
               className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg hover-lift"
             >
               Start generating notes
-            </a>
-            <button
-              onClick={() => handlePageChange('features')}
+            </Link>
+            <Link
+              href="/features"
               className="border border-gray-300 text-gray-900 px-8 py-4 rounded-md font-medium hover:border-gray-400 transition-all duration-200 hover:shadow-md hover:bg-gray-50 hover-lift"
             >
               View features
-            </button>
+            </Link>
           </div>
 
           <div className="text-sm text-gray-500 space-x-6 animate-on-load animate-fade-in-up" style={{ animationDelay: '0.7s' }}>
@@ -849,70 +766,115 @@ export const LandingPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
-          <div className="p-8 bg-white rounded-lg border border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-20">
+          <div className="p-8 bg-white rounded-lg border border-gray-200 flex flex-col h-full">
             <div className="text-center mb-8">
               <h3 className="text-2xl font-medium text-gray-900 mb-2">Free</h3>
-              <p className="text-gray-600 mb-4">Perfect for getting started</p>
-              <div className="text-4xl font-light text-gray-900">30</div>
-              <div className="text-gray-600">coins on signup</div>
+              <p className="text-gray-600 mb-4">Try before you buy</p>
+              <div className="text-4xl font-light text-gray-900">$0</div>
+              <div className="text-gray-600">forever</div>
             </div>
-            <ul className="space-y-4 mb-8">
+            <ul className="space-y-4 mb-8 flex-grow">
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">30 coins welcome bonus</span>
+                <span className="text-gray-600">10 free coins</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">10 notes per month limit</span>
+                <span className="text-gray-600">Generate up to 10 pages</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">Basic note formats</span>
+                <span className="text-gray-600">All note formats</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">1 coin = 1 page</span>
+                <span className="text-gray-600">No credit card required</span>
               </li>
             </ul>
-            <button
-              onClick={() => setShowApp(true)}
-              className="w-full border border-gray-300 text-gray-900 px-6 py-3 rounded-md font-medium hover:border-gray-400 transition-colors"
-            >
-              Get started free
-            </button>
+            <div className="space-y-2 mt-auto">
+              <button
+                onClick={() => handleShowApp()}
+                className="w-full border border-gray-300 text-gray-900 px-6 py-3 rounded-md font-medium hover:border-gray-400 transition-colors"
+              >
+                Get started free
+              </button>
+            </div>
           </div>
 
-          <div className="p-8 bg-white rounded-lg border-2 border-black relative">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-              <span className="bg-black text-white px-4 py-1 rounded-full text-sm font-medium">Popular</span>
-            </div>
+          <div className="p-8 bg-white rounded-lg border border-gray-200 flex flex-col h-full">
             <div className="text-center mb-8">
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">Pro</h3>
-              <p className="text-gray-600 mb-4">For students and professionals</p>
+              <h3 className="text-2xl font-medium text-gray-900 mb-2">100 Coins</h3>
+              <p className="text-gray-600 mb-4">Perfect for getting started</p>
               <div className="text-4xl font-light text-gray-900">$4.99</div>
-              <div className="text-gray-600">per month + 100 bonus coins</div>
+              <div className="text-gray-600">one-time payment</div>
             </div>
-            <ul className="space-y-4 mb-8">
+            <ul className="space-y-4 mb-8 flex-grow">
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">100 bonus coins on upgrade</span>
+                <span className="text-gray-600">100 coins total</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">200 monthly notes</span>
+                <span className="text-gray-600">Generate up to 100 pages</span>
+              </li>
+              <li className="flex items-center">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-600">All note formats</span>
+              </li>
+              <li className="flex items-center">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-600">PDF export</span>
+              </li>
+            </ul>
+            <div className="space-y-2 mt-auto">
+              <button
+                onClick={() => openModal('100 Coins', '4.99', 100)}
+                className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
+              >
+                Subscribe
+              </button>
+            </div>
+          </div>
+
+          <div className="p-8 bg-white rounded-lg border-2 border-black relative flex flex-col h-full">
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+              <span className="bg-black text-white px-4 py-1 rounded-full text-sm font-medium">Best Value</span>
+            </div>
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-medium text-gray-900 mb-2">500 Coins</h3>
+              <p className="text-gray-600 mb-4">For students and professionals</p>
+              <div className="text-4xl font-light text-gray-900">$19.99</div>
+              <div className="text-gray-600">one-time payment</div>
+            </div>
+            <ul className="space-y-4 mb-8 flex-grow">
+              <li className="flex items-center">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-600">500 coins total</span>
+              </li>
+              <li className="flex items-center">
+                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-gray-600">Generate up to 500 pages</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -933,47 +895,47 @@ export const LandingPage: React.FC = () => {
                 <span className="text-gray-600">Priority support</span>
               </li>
             </ul>
-            <div className="space-y-2">
-              <PayPalSubscription 
-                planId="P-37D43660E4028554FNB2I7FQ"
-                onSuccess={(subscriptionId) => {
-                  console.log('Subscription successful:', subscriptionId);
-                }}
-              />
+            <div className="space-y-2 mt-auto">
+              <button
+                onClick={() => openModal('500 Coins', '19.99', 500)}
+                className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
+              >
+                Subscribe
+              </button>
             </div>
           </div>
 
-          <div className="p-8 bg-white rounded-lg border border-gray-200">
+          <div className="p-8 bg-white rounded-lg border border-gray-200 flex flex-col h-full">
             <div className="text-center mb-8">
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">Enterprise</h3>
-              <p className="text-gray-600 mb-4">For teams and organizations</p>
-              <div className="text-4xl font-light text-gray-900">$19</div>
-              <div className="text-gray-600">per month + 200 bonus coins</div>
+              <h3 className="text-2xl font-medium text-gray-900 mb-2">1500 Coins</h3>
+              <p className="text-gray-600 mb-4">For power users and teams</p>
+              <div className="text-4xl font-light text-gray-900">$59.99</div>
+              <div className="text-gray-600">one-time payment</div>
             </div>
-            <ul className="space-y-4 mb-8">
+            <ul className="space-y-4 mb-8 flex-grow">
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">200 bonus coins on upgrade</span>
+                <span className="text-gray-600">1500 coins total</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">Unlimited monthly notes</span>
+                <span className="text-gray-600">Generate up to 1500 pages</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">Team collaboration</span>
+                <span className="text-gray-600">All note formats</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-gray-600">Custom branding</span>
+                <span className="text-gray-600">Priority support</span>
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -982,7 +944,14 @@ export const LandingPage: React.FC = () => {
                 <span className="text-gray-600">24/7 support</span>
               </li>
             </ul>
-            <EnterpriseUpgrade />
+            <div className="space-y-2 mt-auto">
+              <button
+                onClick={() => openModal('1500 Coins', '59.99', 1500)}
+                className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
+              >
+                Subscribe
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1094,39 +1063,14 @@ export const LandingPage: React.FC = () => {
     </>
   );
 
-  // Render current page
-  const renderCurrentPage = () => {
-    switch (currentPage) {
-      case 'features':
-        return (
-          <div className="animate-fadeIn">
-            <FeaturesPage />
-          </div>
-        );
-      case 'pricing':
-        return (
-          <div className="animate-fadeIn">
-            <PricingPage />
-          </div>
-        );
-      case 'about':
-        return (
-          <div className="animate-fadeIn">
-            <AboutPage />
-          </div>
-        );
-      default:
-        return <HomePage />;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      <div className={`transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-        {renderCurrentPage()}
+      <div className="page-transition">
+        <HomePage />
       </div>
       <Footer />
+      <PaymentModal />
     </div>
   );
 };

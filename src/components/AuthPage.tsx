@@ -122,35 +122,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Floating doodles */}
-        <div className="absolute top-10 left-10 w-16 h-16 opacity-20 animate-float">
-          <svg viewBox="0 0 64 64" className="w-full h-full text-purple-400">
-            <path d="M32 8 L56 24 L56 40 L32 56 L8 40 L8 24 Z" fill="none" stroke="currentColor" strokeWidth="2" className="animate-draw"/>
-          </svg>
-        </div>
-        <div className="absolute top-20 right-20 w-12 h-12 opacity-20 animate-float-delay">
-          <svg viewBox="0 0 48 48" className="w-full h-full text-blue-400">
-            <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="2" className="animate-draw"/>
-            <circle cx="24" cy="24" r="8" fill="currentColor" className="opacity-30"/>
-          </svg>
-        </div>
-        <div className="absolute bottom-20 left-20 w-20 h-20 opacity-20 animate-float">
-          <svg viewBox="0 0 80 80" className="w-full h-full text-pink-400">
-            <path d="M40 10 L60 30 L40 50 L20 30 Z" fill="none" stroke="currentColor" strokeWidth="2" className="animate-draw"/>
-          </svg>
-        </div>
-        <div className="absolute bottom-10 right-10 w-14 h-14 opacity-20 animate-float-delay">
-          <svg viewBox="0 0 56 56" className="w-full h-full text-green-400">
-            <path d="M28 8 L48 28 L28 48 L8 28 Z" fill="none" stroke="currentColor" strokeWidth="2" className="animate-draw"/>
-          </svg>
-        </div>
-      </div>
-
+    <div className="auth-page min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Main content */}
-      <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-8">
+      <div className="flex items-center justify-center min-h-screen px-4 py-8">
         <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-8">
@@ -199,7 +173,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {currentMode === 'signup' && (
-                <div className="animate-slideInUp">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Full Name
                   </label>
@@ -214,7 +188,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
                 </div>
               )}
 
-              <div className="animate-slideInUp">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
                 </label>
@@ -228,7 +202,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
                 />
               </div>
 
-              <div className="animate-slideInUp">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password
                 </label>
@@ -261,7 +235,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
               </div>
 
               {currentMode === 'signup' && (
-                <div className="animate-slideInUp">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Confirm Password
                   </label>
@@ -277,7 +251,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
               )}
 
               {error && (
-                <div className="animate-slideInUp p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -288,7 +262,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
               )}
 
               {success && (
-                <div className="animate-slideInUp p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -301,7 +275,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ mode }) => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-black text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-800 transition-all duration-200 transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+                className="w-full bg-black text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center space-x-2">

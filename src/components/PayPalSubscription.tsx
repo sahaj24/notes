@@ -6,11 +6,15 @@ import { useUserProfile } from '@/contexts/UserProfileContext';
 
 interface PayPalSubscriptionProps {
   planId: string;
-  onSuccess?: (subscriptionId: string) => void;
+  amount: string;
+  coins: number;
+  onSuccess?: (paymentId: string) => void;
 }
 
 export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({ 
   planId = 'P-37D43660E4028554FNB2I7FQ',
+  amount,
+  coins,
   onSuccess 
 }) => {
   const { user, session } = useAuth();
@@ -23,7 +27,7 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
 
     // Load PayPal SDK
     const script = document.createElement('script');
-    script.src = 'https://www.paypal.com/sdk/js?client-id=AdFWv3FU91KhSop6LI9ZY8EzmPDzGpFjD2LYl7YyZVYpTPNl--1kQFFS9exTmKE8fPcbdXN_RKT7aoJM&vault=true&intent=subscription';
+    script.src = 'https://www.paypal.com/sdk/js?client-id=AdFWv3FU91KhSop6LI9ZY8EzmPDzGpFjD2LYl7YyZVYpTPNl--1kQFFS9exTmKE8fPcbdXN_RKT7aoJM&currency=USD';
     script.async = true;
     
     script.onload = () => {
@@ -51,26 +55,32 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
         shape: 'rect',
         color: 'black',
         layout: 'vertical',
-        label: 'subscribe'
+        label: 'pay'
       },
-      createSubscription: function(data: any, actions: any) {
-        return actions.subscription.create({
-          plan_id: planId
+      createOrder: function(data: any, actions: any) {
+        return actions.order.create({
+          purchase_units: [{
+            amount: {
+              value: amount
+            },
+            description: `${coins} coins for note generation`
+          }]
         });
       },
       onApprove: async function(data: any, actions: any) {
-        const subscriptionId = data.subscriptionID;
-        console.log('PayPal approval successful:', subscriptionId);
+        const order = await actions.order.capture();
+        const paymentId = order.id;
+        console.log('PayPal payment successful:', paymentId);
         
         try {
           if (!session) {
-            alert('Please log in to complete your subscription');
+            alert('Please log in to complete your purchase');
             return;
           }
 
-          console.log('Making API call to upgrade user...');
+          console.log('Making API call to credit coins...');
           
-          // Update user to Pro tier
+          // Credit coins to user
           const response = await fetch('/api/user/upgrade', {
             method: 'POST',
             headers: {
@@ -78,9 +88,11 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
               'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
-              tier: 'pro',
-              subscriptionId: subscriptionId,
-              paymentMethod: 'paypal'
+              tier: 'one-time',
+              paymentId: paymentId,
+              paymentMethod: 'paypal',
+              coins: coins,
+              amount: amount
             }),
           });
 
@@ -94,17 +106,17 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
             
             // Call success callback
             if (onSuccess) {
-              onSuccess(subscriptionId);
+              onSuccess(paymentId);
             }
             
-            alert(`Successfully upgraded to Pro! You now have 200 monthly notes and received ${result.bonus_coins} bonus coins.`);
+            alert(`Payment successful! You have been credited ${coins} coins.`);
           } else {
-            console.error('Failed to upgrade user:', result);
-            alert(`Payment successful but failed to upgrade account: ${result.error || 'Unknown error'}. Please contact support with subscription ID: ${subscriptionId}`);
+            console.error('Failed to credit coins:', result);
+            alert(`Payment successful but failed to credit coins: ${result.error || 'Unknown error'}. Please contact support with payment ID: ${paymentId}`);
           }
         } catch (error) {
-          console.error('Error upgrading user:', error);
-          alert(`Payment successful but failed to upgrade account. Please contact support with subscription ID: ${subscriptionId}`);
+          console.error('Error crediting coins:', error);
+          alert(`Payment successful but failed to credit coins. Please contact support with payment ID: ${paymentId}`);
         }
       },
       onError: function(err: any) {
