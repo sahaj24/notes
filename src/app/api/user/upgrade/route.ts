@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Current profile:', currentProfile);
-    const newCoins = (currentProfile?.coins || 0) + 100;
+    const newCoins = 200; // Set total coins to 200 for Pro tier
     console.log('New coin balance will be:', newCoins);
 
     // Try a simple update first to test permissions
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       .from('user_profiles')
       .update({
         tier: 'pro',
-        coins: newCoins, // Add 100 bonus coins
+        coins: newCoins, // Set total coins to 200
         updated_at: new Date().toISOString()
       })
       .eq('id', user.id)
@@ -91,16 +91,16 @@ export async function POST(request: NextRequest) {
       // Don't fail the request for subscription logging issues
     }
 
-    // Record transaction for bonus coins
+    // Record transaction for coin allocation
     const { error: transError } = await supabase
       .from('user_transactions')
       .insert({
         user_id: user.id,
-        transaction_type: 'bonus',
-        amount: 100,
+        transaction_type: 'subscription',
+        amount: 200,
         previous_balance: currentProfile?.coins || 0,
         new_balance: newCoins,
-        description: 'Pro subscription bonus coins',
+        description: 'Pro subscription coin allocation',
         metadata: {
           subscription_id: subscriptionId,
           payment_method: paymentMethod,
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       success: true, 
       message: 'Successfully upgraded to Pro tier',
       tier: 'pro',
-      bonus_coins: 100,
+      total_coins: 200,
       new_coin_balance: newCoins
     });
 

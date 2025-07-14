@@ -7,7 +7,7 @@ This document explains the complete PayPal subscription integration implemented 
 
 ### Subscription Tiers
 - **Free**: 10 coins
-- **Pro ($4.99)**: 200 coins + 100 bonus coins = 300 total
+- **Pro ($4.99)**: 200 coins total
 - **Enterprise ($19.00)**: Unlimited coins (9999 coins credited)
 
 ### Payment Flow
@@ -27,7 +27,7 @@ This document explains the complete PayPal subscription integration implemented 
 - PayPal SDK integration
 - Client ID: AdFWv3FU91KhSop6LI9ZY8EzmPDzGpFjD2LYl7YyZVYpTPNl--1kQFFS9exTmKE8fPcbdXN_RKT7aoJM
 - Sandbox mode for testing
-- Subscription button for $4.99 Pro plan
+- Subscription button for $4.99 Pro plan (200 coins)
 - Error handling and loading states
 - Integration with auth and user profile contexts
 ```
@@ -48,7 +48,7 @@ This document explains the complete PayPal subscription integration implemented 
 // Key functionality:
 - Validates user authentication via JWT token
 - Processes subscription upgrades
-- Credits appropriate coins based on plan
+- Credits appropriate coins based on plan (200 for Pro)
 - Updates user_profiles table
 - Tracks subscriptions in user_subscriptions table
 - Comprehensive error handling and logging
@@ -120,7 +120,7 @@ const { error } = await supabase
 const { error } = await supabase
   .from('user_profiles')
   .update({
-    coins: newCoinBalance,
+    coins: 200, // Set total coins to 200
     subscription_tier: 'pro',
     updated_at: new Date().toISOString()
   })
@@ -174,7 +174,7 @@ During development, we created a debug component to test API calls:
 ### Testing Checklist
 1. ✅ PayPal button renders correctly
 2. ✅ Payment processing works
-3. ✅ Coins are credited after successful payment
+3. ✅ 200 coins are credited after successful payment
 4. ✅ Subscription tier is updated
 5. ✅ Database records are created
 6. ✅ Error handling works for failed payments
