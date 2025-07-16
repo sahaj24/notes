@@ -18,6 +18,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Notopy - AI-Powered Note Generation",
   description: "Transform any topic into beautiful, colorful notes with hand-drawn elements using AI",
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-icon.png',
+  },
 };
 
 export default function RootLayout({
