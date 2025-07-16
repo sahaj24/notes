@@ -46,7 +46,7 @@ export const CoinDisplay: React.FC<CoinDisplayProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="flex items-center">
+      <div className="flex items-center space-x-3">
         {/* Coin Display */}
         <button
           onClick={() => setShowTransactions(!showTransactions)}
@@ -59,7 +59,15 @@ export const CoinDisplay: React.FC<CoinDisplayProps> = ({
           <span className="font-semibold text-gray-900">{profile.coins}</span>
         </button>
         
-        {/* Tier Badge removed */}
+        {/* Upgrade Account Link - Show only when coins are zero */}
+        {profile.coins === 0 && (
+          <a 
+            href="/pricing" 
+            className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors duration-200"
+          >
+            Upgrade Account
+          </a>
+        )}
       </div>
 
       {/* Detailed Info */}

@@ -24,12 +24,12 @@ export const LandingPage: React.FC = () => {
   useEffect(() => {
     // Skip during SSR to prevent hydration mismatch
     if (typeof window === 'undefined') return;
-    
+
     // Prevent multiple initializations
     if (mounted) return;
-    
+
     setMounted(true);
-    
+
     // Add a small delay then trigger animations
     const timer = setTimeout(() => {
       // Remove the opacity-0 class that's hiding elements
@@ -40,7 +40,7 @@ export const LandingPage: React.FC = () => {
         }, index * 100); // Stagger the animations
       });
     }, 200);
-    
+
     return () => clearTimeout(timer);
   }, [mounted]);
 
@@ -81,7 +81,7 @@ export const LandingPage: React.FC = () => {
   const faqData = [
     {
       question: "How does the AI-powered note generation work?",
-      answer: "Our AI uses Google's Gemini model to understand your requirements and generate beautifully formatted notes with hand-drawn elements, colorful layouts, and natural handwriting styles. Simply describe what you need, and our AI creates a visually stunning note for you."
+      answer: "Our AI understands your requirements and generates beautifully formatted notes with hand-drawn elements, colorful layouts, and natural handwriting styles. Simply describe what you need, and our AI creates a visually stunning note for you."
     },
     {
       question: "Can I customize the appearance of my notes?",
@@ -136,15 +136,6 @@ export const LandingPage: React.FC = () => {
     }
   ];
 
-  const integrations = [
-    { name: "Google Drive", logo: "📁", description: "Sync your notes with Google Drive" },
-    { name: "Notion", logo: "📝", description: "Export directly to Notion pages" },
-    { name: "Slack", logo: "💬", description: "Share notes in Slack channels" },
-    { name: "Dropbox", logo: "📦", description: "Backup to Dropbox automatically" },
-    { name: "Microsoft Teams", logo: "🤝", description: "Collaborate via Teams integration" },
-    { name: "Zoom", logo: "🎥", description: "Generate meeting notes from Zoom" }
-  ];
-
   if (!mounted) return null;
 
   // Modal component
@@ -160,14 +151,14 @@ export const LandingPage: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          
+
           {selectedPlan && (
             <div className="text-center">
               <h3 className="text-2xl font-semibold text-gray-900 mb-2">{selectedPlan.name}</h3>
               <p className="text-gray-600 mb-4">${selectedPlan.amount}</p>
-              
+
               <div className="mt-6">
-                <PayPalSubscription 
+                <PayPalSubscription
                   planId="P-37D43660E4028554FNB2I7FQ"
                   amount={selectedPlan.amount}
                   coins={selectedPlan.coins}
@@ -194,33 +185,32 @@ export const LandingPage: React.FC = () => {
 
   // Navigation component
   const Navigation = () => (
-    <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300 animate-on-load animate-fade-in-down">
+    <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <Link 
+          <Link
             href="/"
-            className="flex items-center space-x-2 cursor-pointer group transition-all duration-200 animate-on-load animate-fade-in-left" 
-            style={{ animationDelay: '0.1s' }}
+            className="flex items-center space-x-2 cursor-pointer group transition-all duration-200"
           >
             <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
               <div className="w-4 h-4 bg-white rounded-sm"></div>
             </div>
             <span className="text-xl font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-200">Notopy</span>
           </Link>
-          <nav className="hidden md:flex items-center space-x-8 animate-on-load animate-fade-in-right" style={{ animationDelay: '0.2s' }}>
-            <Link 
+          <nav className="hidden md:flex items-center space-x-8">
+            <Link
               href="/features"
               className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
             >
               Features
             </Link>
-            <Link 
+            <Link
               href="/pricing"
               className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
             >
               Pricing
             </Link>
-            <Link 
+            <Link
               href="/about"
               className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
             >
@@ -239,13 +229,13 @@ export const LandingPage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <Link 
+                  <Link
                     href="/login"
                     className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200"
                   >
                     Sign In
                   </Link>
-                  <Link 
+                  <Link
                     href="/signup"
                     className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
                   >
@@ -256,14 +246,14 @@ export const LandingPage: React.FC = () => {
             </div>
           </nav>
           <div className="md:hidden">
-            <button 
+            <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 hover:bg-gray-100 rounded-md transition-colors duration-200"
             >
-              <svg 
-                className={`w-6 h-6 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className={`w-6 h-6 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`}
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 {mobileMenuOpen ? (
@@ -275,27 +265,26 @@ export const LandingPage: React.FC = () => {
             </button>
           </div>
         </div>
-        
+
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-100 animate-fade-in-down">
+          <div className="md:hidden bg-white border-t border-gray-100">
             <div className="px-6 py-4 space-y-4">
-              <Link 
+              <Link
                 href="/features"
-                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 landing-item animate-on-load animate-fade-in-left text-gray-600 hover:text-gray-900"
-                style={{ animationDelay: '0.1s' }}
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Features
               </Link>
-              <Link 
+              <Link
                 href="/pricing"
                 className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Pricing
               </Link>
-              <Link 
+              <Link
                 href="/about"
                 className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
                 onClick={() => setMobileMenuOpen(false)}
@@ -320,18 +309,18 @@ export const LandingPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <a 
+                    <Link
                       href="/login"
                       className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 py-2"
                     >
                       Sign In
-                    </a>
-                    <a 
+                    </Link>
+                    <Link
                       href="/signup"
                       className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 mt-2 text-center"
                     >
                       Get Started
-                    </a>
+                    </Link>
                   </>
                 )}
               </div>
@@ -347,7 +336,7 @@ export const LandingPage: React.FC = () => {
     <footer className="border-t border-gray-100 bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          <div className="animate-fadeInUp" style={{ animationDelay: '0.1s' }}>
+          <div>
             <div className="flex items-center space-x-2 mb-4">
               <div className="w-6 h-6 bg-black rounded-sm flex items-center justify-center">
                 <div className="w-3 h-3 bg-white rounded-sm"></div>
@@ -358,15 +347,15 @@ export const LandingPage: React.FC = () => {
               AI-powered note generation platform for researchers, students, and professionals.
             </p>
           </div>
-          <div className="animate-fadeInUp" style={{ animationDelay: '0.2s' }}>
+          <div>
             <h4 className="font-medium text-gray-900 mb-4">Product</h4>
             <div className="space-y-2 text-sm text-gray-600">
               <Link href="/features" className="block hover:text-gray-900 transition-colors duration-200">Features</Link>
               <Link href="/pricing" className="block hover:text-gray-900 transition-colors duration-200">Pricing</Link>
-              <button onClick={handleShowApp} className="block hover:text-gray-900 transition-colors duration-200">Try Now</button>
+              <button onClick={handleShowApp} className="block hover:text-gray-900 transition-colors duration-200 text-left bg-transparent p-0 text-sm text-gray-600">Try Now</button>
             </div>
           </div>
-          <div className="animate-fadeInUp" style={{ animationDelay: '0.3s' }}>
+          <div>
             <h4 className="font-medium text-gray-900 mb-4">Company</h4>
             <div className="space-y-2 text-sm text-gray-600">
               <Link href="/about" className="block hover:text-gray-900 transition-colors duration-200">About</Link>
@@ -374,7 +363,7 @@ export const LandingPage: React.FC = () => {
               <a href="#" className="block hover:text-gray-900 transition-colors duration-200">Contact</a>
             </div>
           </div>
-          <div className="animate-fadeInUp" style={{ animationDelay: '0.4s' }}>
+          <div>
             <h4 className="font-medium text-gray-900 mb-4">Support</h4>
             <div className="space-y-2 text-sm text-gray-600">
               <a href="#" className="block hover:text-gray-900 transition-colors duration-200">Help Center</a>
@@ -383,698 +372,351 @@ export const LandingPage: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-between pt-8 border-t border-gray-100 animate-fadeInUp" style={{ animationDelay: '0.5s' }}>
+        <div className="flex items-center justify-between pt-8 border-t border-gray-100">
           <div className="text-sm text-gray-500">
             © 2025 Notopy. All rights reserved.
           </div>
           <div className="text-sm text-gray-500">
-            Powered by Google Gemini AI
+            Advanced AI-powered note generation
           </div>
         </div>
       </div>
     </footer>
   );
 
-  // Home page content
-  const HomePage = () => (
-    <div className="page-transition pt-8">
-      {/* Hero */}
-      <section className="max-w-7xl mx-auto px-6 py-24 landing-section animate-on-load animate-fade-in-up">
-        {/* Hero Content */}
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-7xl font-light text-gray-900 mb-8 leading-[1.1] tracking-tight animate-on-load animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-            AI-powered note
-            <br />
-            <span className="font-medium">generation platform</span>
-          </h1>
-          
-          <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed font-light animate-on-load animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-            Transform any topic into professionally structured, visually enhanced notes 
-            using advanced AI technology. Built for researchers, students, and professionals.
-          </p>
+  return (
+    <div className="min-h-screen bg-white">
+      <Navigation />
 
-          <div className="flex items-center justify-center space-x-4 mb-16 animate-on-load animate-scale-in" style={{ animationDelay: '0.5s' }}>
-            <Link
-              href="/signup"
-              className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg hover-lift"
-            >
-              Start generating notes
-            </Link>
-            <Link
-              href="/features"
-              className="border border-gray-300 text-gray-900 px-8 py-4 rounded-md font-medium hover:border-gray-400 transition-all duration-200 hover:shadow-md hover:bg-gray-50 hover-lift"
-            >
-              View features
-            </Link>
-          </div>
+      {/* Hero Section */}
+      <section className="max-w-7xl mx-auto px-6 pt-24 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="order-2 lg:order-1">
+            <h1 className="text-5xl md:text-6xl font-light text-gray-900 mb-6 leading-tight">
+              Transform any topic into
+              <span className="font-medium block"> beautiful notes</span>
+              <span className="text-blue-600 font-medium">instantly</span>
+            </h1>
 
-          <div className="text-sm text-gray-500 space-x-6 animate-on-load animate-fade-in-up" style={{ animationDelay: '0.7s' }}>
-            <span>No signup required</span>
-            <span>•</span>
-            <span>Free tier available</span>
-            <span>•</span>
-            <span>Enterprise ready</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Preview */}
-      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-100 landing-section animate-on-load animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-          <div className="space-y-8 animate-on-load animate-fade-in-left" style={{ animationDelay: '0.3s' }}>
-            <div>
-              <h2 className="text-4xl font-light text-gray-900 mb-6">
-                Intelligent content
-                <br />
-                <span className="font-medium">structuring</span>
-              </h2>
-              <p className="text-lg text-gray-600 leading-relaxed">
-                Our AI analyzes your topic and creates comprehensive, well-organized notes 
-                with proper hierarchy, key concepts, and supporting details.
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-8">
-              <div className="transform hover:scale-105 transition-transform duration-200 hover-lift landing-item animate-on-load animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
-                <h3 className="text-lg font-medium text-gray-900 mb-3">Multi-format output</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Study guides, mind maps, timelines, comparison charts, and more.
-                </p>
-              </div>
-              <div className="transform hover:scale-105 transition-transform duration-200 hover-lift landing-item animate-on-load animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
-                <h3 className="text-lg font-medium text-gray-900 mb-3">Visual enhancement</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Handwriting fonts, colors, and layouts that improve retention.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-8 flex items-center justify-center animate-on-load animate-fade-in-right hover:bg-gray-100 transition-colors duration-300 hover-lift" style={{ animationDelay: '0.4s' }}>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4 animate-on-load animate-scale-in" style={{ animationDelay: '0.7s' }}>
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <p className="text-gray-600 font-medium">AI-generated note preview</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-100 landing-section animate-on-load animate-slide-in-up" style={{ animationDelay: '0.4s' }}>
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-4xl font-light text-gray-900 mb-6 animate-on-load animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
-            Trusted by thousands
-            <br />
-            <span className="font-medium">of professionals</span>
-          </h2>
-          <p className="text-lg text-gray-600 leading-relaxed font-light animate-on-load animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
-            See how NoteCraft is transforming the way people create and organize their notes.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {testimonials.map((testimonial, index) => (
-            <div 
-              key={index} 
-              className="bg-white rounded-lg p-8 border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg transform hover:scale-105 landing-item animate-on-load animate-fade-in-up hover-lift"
-              style={{ animationDelay: `${0.7 + (0.1 * index)}s` }}
-            >
-              <div className="flex mb-4">
-                {[...Array(testimonial.rating)].map((_, i) => (
-                  <svg key={i} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-              <p className="text-gray-600 mb-6 leading-relaxed">"{testimonial.content}"</p>
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-sm font-medium text-gray-600">
-                    {testimonial.name.split(' ').map(n => n[0]).join('')}
-                  </span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">{testimonial.name}</p>
-                  <p className="text-sm text-gray-500">{testimonial.role} at {testimonial.company}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Integrations */}
-      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-100">
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-4xl font-light text-gray-900 mb-6 animate-slideInUp">
-            Works with your
-            <br />
-            <span className="font-medium">favorite tools</span>
-          </h2>
-          <p className="text-lg text-gray-600 leading-relaxed font-light animate-slideInUp" style={{ animationDelay: '0.2s' }}>
-            Seamlessly integrate NoteCraft with the tools you already use every day.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
-          {integrations.map((integration, index) => (
-            <div 
-              key={index} 
-              className="bg-white rounded-lg p-6 border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg transform hover:scale-105 animate-slideInUp text-center"
-              style={{ animationDelay: `${0.1 * (index + 1)}s` }}
-            >
-              <div className="text-3xl mb-4">{integration.logo}</div>
-              <h3 className="font-medium text-gray-900 mb-2">{integration.name}</h3>
-              <p className="text-sm text-gray-600">{integration.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Newsletter */}
-      <section className="bg-gray-50 border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-24">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl font-light text-gray-900 mb-6 animate-slideInUp">
-              Stay updated with
-              <br />
-              <span className="font-medium">the latest features</span>
-            </h2>
-            <p className="text-lg text-gray-600 mb-8 leading-relaxed font-light animate-slideInUp" style={{ animationDelay: '0.2s' }}>
-              Get tips, updates, and exclusive content delivered to your inbox.
+            <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+              Notopy uses advanced AI to generate visually stunning,
+              well-structured notes for students, researchers, and professionals.
             </p>
-            
-            <form onSubmit={handleNewsletterSubmit} className="max-w-md mx-auto animate-slideInUp" style={{ animationDelay: '0.4s' }}>
-              <div className="flex space-x-4">
-                <input
-                  type="email"
-                  value={newsletterEmail}
-                  onChange={(e) => setNewsletterEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200"
-                  required
-                />
-                <button
-                  type="submit"
-                  disabled={newsletterSubmitted}
-                  className="bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {newsletterSubmitted ? 'Subscribed!' : 'Subscribe'}
-                </button>
-              </div>
-            </form>
-            
-            {newsletterSubmitted && (
-              <p className="text-green-600 mt-4 animate-fadeIn">
-                Thank you for subscribing! Check your email for confirmation.
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
 
-      {/* FAQ */}
-      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-gray-100">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-light text-gray-900 mb-6 animate-slideInUp">
-              Frequently asked
-              <br />
-              <span className="font-medium">questions</span>
-            </h2>
-            <p className="text-lg text-gray-600 leading-relaxed font-light animate-slideInUp" style={{ animationDelay: '0.2s' }}>
-              Everything you need to know about Notopy and AI-powered note generation.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {faqData.map((faq, index) => (
-              <div 
-                key={index} 
-                className="border border-gray-200 rounded-lg animate-slideInUp"
-                style={{ animationDelay: `${0.1 * (index + 1)}s` }}
+            <div className="flex flex-col sm:flex-row gap-4 mb-8">
+              <button
+                onClick={handleShowApp}
+                className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
               >
-                <button
-                  onClick={() => toggleFaq(index)}
-                  className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 transition-colors duration-200"
-                >
-                  <span className="font-medium text-gray-900">{faq.question}</span>
-                  <svg 
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      expandedFaq === index ? 'rotate-180' : ''
-                    }`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                Try for free
+              </button>
+              <Link
+                href="/features"
+                className="border border-gray-300 text-gray-900 px-8 py-4 rounded-md font-medium hover:border-gray-400 transition-all duration-200 hover:shadow-md hover:bg-gray-50 text-center"
+              >
+                See how it works
+              </Link>
+            </div>
+
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>No credit card required</span>
+              <span className="mx-2">•</span>
+              <span>10 free notes</span>
+            </div>
+          </div>
+
+          <div className="order-1 lg:order-2 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 shadow-sm">
+            <div className="relative">
+              <div className="bg-white rounded-lg shadow-md p-6 transform rotate-1 mb-4">
+                <div className="flex items-center mb-4">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-blue-600 text-lg">📝</span>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900">Study Notes</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-100 rounded w-full"></div>
+                  <div className="h-3 bg-gray-100 rounded w-5/6"></div>
+                  <div className="h-3 bg-gray-100 rounded w-4/6"></div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-md p-6 transform -rotate-1">
+                <div className="flex items-center mb-4">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-green-600 text-lg">🧠</span>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900">Mind Map</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-100 rounded w-full"></div>
+                  <div className="h-3 bg-gray-100 rounded w-3/4"></div>
+                  <div className="h-3 bg-gray-100 rounded w-5/6"></div>
+                </div>
+              </div>
+
+              <div className="absolute top-1/2 right-0 transform translate-x-1/3 -translate-y-1/2 bg-blue-600 text-white text-sm font-medium px-3 py-1 rounded-full shadow-md">
+                AI-Generated
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="bg-gray-50 py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-light text-gray-900 mb-4">
+              Powerful <span className="font-medium">features</span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Everything you need to create beautiful, effective notes in seconds
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                title: "AI Content Generation",
+                description: "Generate comprehensive notes instantly using advanced AI. Just enter a topic and get structured, intelligent content.",
+                icon: "M13 10V3L4 14h7v7l9-11h-7z"
+              },
+              {
+                title: "Visual Enhancement",
+                description: "Transform plain text into visually appealing notes with handwriting fonts, colors, and organic layouts.",
+                icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              },
+              {
+                title: "Multiple Note Formats",
+                description: "Create study guides, mind maps, timelines, comparison charts, and more. Each format optimized for different learning styles.",
+                icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              }
+            ].map((feature, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-lg p-8 shadow-sm hover:shadow-md transition-all duration-300"
+              >
+                <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center mb-6">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={feature.icon} />
                   </svg>
-                </button>
-                {expandedFaq === index && (
-                  <div className="px-6 pb-4 text-gray-600 leading-relaxed animate-slideInUp">
-                    {faq.answer}
+                </div>
+                <h3 className="text-xl font-medium text-gray-900 mb-3">{feature.title}</h3>
+                <p className="text-gray-600">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <Link href="/features" className="inline-flex items-center text-blue-600 font-medium hover:text-blue-800 transition-colors duration-200">
+              <span>Explore all features</span>
+              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-light text-gray-900 mb-4">
+              How <span className="font-medium">it works</span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Create beautiful notes in just a few simple steps
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            {[
+              {
+                step: "1",
+                title: "Enter your topic",
+                description: "Type any subject you want to learn about or document"
+              },
+              {
+                step: "2",
+                title: "Choose a template",
+                description: "Select from multiple note formats based on your needs"
+              },
+              {
+                step: "3",
+                title: "Generate notes",
+                description: "Our AI creates beautiful, structured notes instantly"
+              },
+              {
+                step: "4",
+                title: "Export & share",
+                description: "Download as PDF, PNG, or share directly with others"
+              }
+            ].map((item, index) => (
+              <div key={index} className="text-center">
+                <div className="w-16 h-16 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-medium">
+                  {item.step}
+                </div>
+                <h3 className="text-xl font-medium text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-gray-600">{item.description}</p>
+
+                {index < 3 && (
+                  <div className="hidden md:block absolute transform translate-x-1/2 translate-y-8">
+                    <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
                   </div>
                 )}
               </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* CTA */}
-      <section className="border-t border-gray-100 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-6 py-24">
-          <div className="max-w-4xl mx-auto text-center animate-fadeInUp">
-            <h2 className="text-4xl font-light text-gray-900 mb-6">
-              Ready to transform
-              <br />
-              <span className="font-medium">your learning?</span>
-            </h2>
-            <p className="text-lg text-gray-600 mb-8">
-              Join thousands of students and professionals using AI-powered note generation.
-            </p>
+          <div className="mt-16 text-center">
             <button
               onClick={handleShowApp}
               className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
             >
-              Get started today
+              Try it now
             </button>
           </div>
         </div>
       </section>
-    </div>
-  );
 
-  // Features page content
-  const FeaturesPage = () => (
-    <>
-      <section className="max-w-7xl mx-auto px-6 py-24">
-        <div className="max-w-4xl mx-auto text-center mb-20">
-          <h1 className="text-6xl font-light text-gray-900 mb-8 leading-tight animate-slideInUp">
-            Powerful features for
-            <br />
-            <span className="font-medium">modern learning</span>
-          </h1>
-          <p className="text-xl text-gray-600 leading-relaxed font-light animate-slideInUp" style={{ animationDelay: '0.2s' }}>
-            Discover how Notopy's AI-powered features can transform your note-taking experience.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
-          {[
-            {
-              title: "AI Content Generation",
-              description: "Generate comprehensive notes instantly using Google's Gemini AI. Just enter a topic and get structured, intelligent content.",
-              icon: "M13 10V3L4 14h7v7l9-11h-7z"
-            },
-            {
-              title: "Multiple Note Formats",
-              description: "Create study guides, mind maps, timelines, comparison charts, and more. Each format optimized for different learning styles.",
-              icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            },
-            {
-              title: "Visual Enhancement",
-              description: "Transform plain text into visually appealing notes with handwriting fonts, colors, and organic layouts.",
-              icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-            },
-            {
-              title: "Instant Export",
-              description: "Download your notes as high-quality images or PDFs. Perfect for sharing or offline studying.",
-              icon: "M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            },
-            {
-              title: "Smart Organization",
-              description: "Automatically organize information with proper hierarchy, key concepts, and supporting details.",
-              icon: "M19 11H5m14-7H3a2 2 0 00-2 2v9a2 2 0 002 2h11l5-5v-5a2 2 0 00-2-2z"
-            },
-            {
-              title: "Collaborative Features",
-              description: "Share notes with classmates or colleagues. Real-time collaboration for group projects.",
-              icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-            }
-          ].map((feature, index) => (
-            <div 
-              key={index} 
-              className="p-8 bg-white rounded-lg border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg hover:scale-105 animate-slideInUp"
-              style={{ animationDelay: `${0.1 * (index + 1)}s` }}
-            >
-              <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-200">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={feature.icon} />
-                </svg>
-              </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-3">{feature.title}</h3>
-              <p className="text-gray-600 leading-relaxed">{feature.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="border-t border-gray-100 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-6 py-24">
-          <div className="max-w-4xl mx-auto text-center animate-fadeInUp">
-            <h2 className="text-4xl font-light text-gray-900 mb-6">
-              Experience the future
-              <br />
-              <span className="font-medium">of note-taking</span>
+      {/* Enhanced Note Examples Section */}
+      <section className="bg-gray-50 py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-light text-gray-900 mb-4">
+              Beautiful <span className="font-medium">note styles</span>
             </h2>
-            <p className="text-lg text-gray-600 mb-8">
-              Try Notopy today and see how AI can transform your learning experience.
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Choose from a variety of professionally designed templates
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                title: "Creative Collage",
+                description: "Colorful, hand-drawn style with organic layouts and visual elements",
+                color: "bg-gradient-to-br from-purple-50 to-purple-100",
+                accent: "border-purple-300"
+              },
+              {
+                title: "Academic Study",
+                description: "Clean, structured format perfect for research and academic work",
+                color: "bg-gradient-to-br from-blue-50 to-blue-100",
+                accent: "border-blue-300"
+              },
+              {
+                title: "Mind Map",
+                description: "Visual connections showing relationships between concepts and ideas",
+                color: "bg-gradient-to-br from-green-50 to-green-100",
+                accent: "border-green-300"
+              }
+            ].map((style, index) => (
+              <div
+                key={index}
+                className={`rounded-lg p-8 shadow-sm hover:shadow-md transition-all duration-300 border-l-4 ${style.accent} ${style.color}`}
+              >
+                <h3 className="text-xl font-medium text-gray-900 mb-3">{style.title}</h3>
+                <p className="text-gray-600 mb-6">{style.description}</p>
+                <div className="h-32 bg-white rounded-lg shadow-sm flex items-center justify-center">
+                  <span className="text-gray-400">Note preview</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
             <button
               onClick={handleShowApp}
               className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
             >
-              Start creating notes
+              Try all templates
             </button>
           </div>
         </div>
       </section>
-    </>
-  );
 
-  // Pricing page content
-  const PricingPage = () => (
-    <>
-      <section className="max-w-7xl mx-auto px-6 py-24">
-        <div className="max-w-4xl mx-auto text-center mb-20">
-          <h1 className="text-6xl font-light text-gray-900 mb-8 leading-tight">
-            Simple, transparent
-            <br />
-            <span className="font-medium">pricing</span>
-          </h1>
-          <p className="text-xl text-gray-600 leading-relaxed font-light">
-            Pay per note with our coin system. No subscriptions, no monthly fees - just pay for what you use.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-20">
-          <div className="p-8 bg-white rounded-lg border border-gray-200 flex flex-col h-full">
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">Free</h3>
-              <p className="text-gray-600 mb-4">Try before you buy</p>
-              <div className="text-4xl font-light text-gray-900">$0</div>
-              <div className="text-gray-600">forever</div>
-            </div>
-            <ul className="space-y-4 mb-8 flex-grow">
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">10 free coins</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Generate up to 10 pages</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">All note formats</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">No credit card required</span>
-              </li>
-            </ul>
-            <div className="space-y-2 mt-auto">
-              <button
-                onClick={() => handleShowApp()}
-                className="w-full border border-gray-300 text-gray-900 px-6 py-3 rounded-md font-medium hover:border-gray-400 transition-colors"
-              >
-                Get started free
-              </button>
-            </div>
-          </div>
-
-          <div className="p-8 bg-white rounded-lg border border-gray-200 flex flex-col h-full">
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">100 Coins</h3>
-              <p className="text-gray-600 mb-4">Perfect for getting started</p>
-              <div className="text-4xl font-light text-gray-900">$4.99</div>
-              <div className="text-gray-600">one-time payment</div>
-            </div>
-            <ul className="space-y-4 mb-8 flex-grow">
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">100 coins total</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Generate up to 100 pages</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">All note formats</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">PDF export</span>
-              </li>
-            </ul>
-            <div className="space-y-2 mt-auto">
-              <button
-                onClick={() => openModal('100 Coins', '4.99', 100)}
-                className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
-              >
-                Subscribe
-              </button>
-            </div>
-          </div>
-
-          <div className="p-8 bg-white rounded-lg border-2 border-black relative flex flex-col h-full">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-              <span className="bg-black text-white px-4 py-1 rounded-full text-sm font-medium">Best Value</span>
-            </div>
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">500 Coins</h3>
-              <p className="text-gray-600 mb-4">For students and professionals</p>
-              <div className="text-4xl font-light text-gray-900">$19.99</div>
-              <div className="text-gray-600">one-time payment</div>
-            </div>
-            <ul className="space-y-4 mb-8 flex-grow">
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">500 coins total</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Generate up to 500 pages</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">All note formats</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">PDF export</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Priority support</span>
-              </li>
-            </ul>
-            <div className="space-y-2 mt-auto">
-              <button
-                onClick={() => openModal('500 Coins', '19.99', 500)}
-                className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
-              >
-                Subscribe
-              </button>
-            </div>
-          </div>
-
-          <div className="p-8 bg-white rounded-lg border border-gray-200 flex flex-col h-full">
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">1500 Coins</h3>
-              <p className="text-gray-600 mb-4">For power users and teams</p>
-              <div className="text-4xl font-light text-gray-900">$59.99</div>
-              <div className="text-gray-600">one-time payment</div>
-            </div>
-            <ul className="space-y-4 mb-8 flex-grow">
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">1500 coins total</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Generate up to 1500 pages</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">All note formats</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Priority support</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">24/7 support</span>
-              </li>
-            </ul>
-            <div className="space-y-2 mt-auto">
-              <button
-                onClick={() => openModal('1500 Coins', '59.99', 1500)}
-                className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
-              >
-                Subscribe
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center">
-          <h3 className="text-2xl font-medium text-gray-900 mb-4">How the coin system works</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-lg">¢</span>
-              </div>
-              <h4 className="font-medium text-gray-900 mb-2">1 Coin = 1 Page</h4>
-              <p className="text-gray-600 text-sm">Each page of notes costs exactly 1 coin. Multi-page notes cost coins per page.</p>
-            </div>
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-lg">+</span>
-              </div>
-              <h4 className="font-medium text-gray-900 mb-2">Earn Bonus Coins</h4>
-              <p className="text-gray-600 text-sm">Get bonus coins for being an active user, referrals, and special promotions.</p>
-            </div>
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-lg">∞</span>
-              </div>
-              <h4 className="font-medium text-gray-900 mb-2">No Expiration</h4>
-              <p className="text-gray-600 text-sm">Your coins never expire. Use them whenever you need to generate notes.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </>
-  );
-
-  // About page content
-  const AboutPage = () => (
-    <>
-      <section className="max-w-7xl mx-auto px-6 py-24">
-        <div className="max-w-4xl mx-auto text-center mb-20">
-          <h1 className="text-6xl font-light text-gray-900 mb-8 leading-tight">
-            About
-            <br />
-            <span className="font-medium">NoteCraft</span>
-          </h1>
-          <p className="text-xl text-gray-600 leading-relaxed font-light">
-            We're building the future of note-taking with AI-powered tools that make learning more effective and enjoyable.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 mb-20">
-          <div>
-            <h2 className="text-3xl font-light text-gray-900 mb-6">Our Mission</h2>
-            <p className="text-lg text-gray-600 leading-relaxed mb-6">
-              We believe that learning should be beautiful, efficient, and accessible to everyone. 
-              NoteCraft was born from the idea that AI can transform how we capture, organize, and engage with knowledge.
-            </p>
-            <p className="text-lg text-gray-600 leading-relaxed">
-              By combining advanced AI technology with thoughtful design, we're creating tools that don't just help you take notes – 
-              they help you understand and retain information better.
-            </p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-8 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <p className="text-gray-600 font-medium">Learning reimagined</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="text-center">
-            <div className="text-4xl font-light text-gray-900 mb-2">10,000+</div>
-            <div className="text-gray-600">Notes generated</div>
-          </div>
-          <div className="text-center">
-            <div className="text-4xl font-light text-gray-900 mb-2">500+</div>
-            <div className="text-gray-600">Happy users</div>
-          </div>
-          <div className="text-center">
-            <div className="text-4xl font-light text-gray-900 mb-2">50+</div>
-            <div className="text-gray-600">Universities</div>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-gray-100 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-6 py-24">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl font-light text-gray-900 mb-6">
-              Join our
-              <br />
-              <span className="font-medium">community</span>
+      {/* FAQ Section */}
+      <section className="py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-light text-gray-900 mb-4">
+              Frequently asked <span className="font-medium">questions</span>
             </h2>
-            <p className="text-lg text-gray-600 mb-8">
-              Be part of the future of learning. Start creating beautiful notes today.
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Everything you need to know about Notopy
             </p>
-            <button
-              onClick={() => setShowApp(true)}
-              className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-colors"
-            >
-              Get started now
-            </button>
+          </div>
+
+          <div className="max-w-3xl mx-auto">
+            <div className="space-y-4">
+              {faqData.map((faq, index) => (
+                <div
+                  key={index}
+                  className="border border-gray-200 rounded-lg"
+                >
+                  <button
+                    onClick={() => toggleFaq(index)}
+                    className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    <span className="font-medium text-gray-900">{faq.question}</span>
+                    <svg
+                      className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedFaq === index ? 'rotate-180' : ''
+                        }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expandedFaq === index && (
+                    <div className="px-6 pb-4 text-gray-600 leading-relaxed">
+                      {faq.answer}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
-    </>
-  );
 
-  return (
-    <div className="min-h-screen bg-white">
-      <Navigation />
-      <div className="page-transition">
-        <HomePage />
-      </div>
+      {/* CTA Section */}
+      <section className="bg-gradient-to-br from-gray-900 to-black text-white py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-4xl font-light mb-6">
+              Ready to transform your <span className="font-medium">note-taking?</span>
+            </h2>
+            <p className="text-xl text-gray-300 mb-8">
+              Join thousands of users who have already discovered the power of AI-generated notes.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={handleShowApp}
+                className="bg-white text-black px-8 py-4 rounded-md font-medium hover:bg-gray-100 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
+              >
+                Try for free
+              </button>
+              <Link
+                href="/pricing"
+                className="border border-white text-white px-8 py-4 rounded-md font-medium hover:bg-white/10 transition-all duration-200 hover:shadow-md"
+              >
+                View pricing
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <Footer />
       <PaymentModal />
     </div>

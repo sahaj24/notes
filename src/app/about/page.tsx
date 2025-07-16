@@ -160,7 +160,7 @@ export default function AboutPage() {
             © 2025 Notopy. All rights reserved.
           </div>
           <div className="text-sm text-gray-500">
-            Powered by Google Gemini AI
+            Advanced AI-powered note generation
           </div>
         </div>
       </div>
@@ -171,6 +171,7 @@ export default function AboutPage() {
     <div className="min-h-screen bg-white">
       <Navigation />
       
+      {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-6 py-24 pt-32">
         <div className="max-w-4xl mx-auto text-center mb-20">
           <h1 className="text-6xl font-light text-gray-900 mb-8 leading-tight">
@@ -179,122 +180,216 @@ export default function AboutPage() {
             <span className="font-medium">Notopy</span>
           </h1>
           <p className="text-xl text-gray-600 leading-relaxed font-light">
-            We're building the future of note-taking with AI-powered tools that make learning more effective and enjoyable.
+            We're revolutionizing note-taking with AI-powered tools that make learning more effective, engaging, and enjoyable.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 mb-20">
-          <div>
-            <h2 className="text-3xl font-light text-gray-900 mb-6">Our Mission</h2>
-            <p className="text-lg text-gray-600 leading-relaxed mb-6">
-              At Notopy, we believe that taking notes shouldn't be a chore. Our AI-powered platform transforms the way students, professionals, and researchers capture and organize information.
-            </p>
-            <p className="text-lg text-gray-600 leading-relaxed mb-6">
-              Using Google's advanced Gemini AI, we generate beautifully formatted notes with hand-drawn elements, colorful layouts, and natural handwriting styles that make learning more engaging and memorable.
-            </p>
-            <div className="space-y-4">
-              <div className="flex items-start">
-                <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center mr-4 mt-1">
-                  <span className="text-white text-sm">✓</span>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">AI-Powered Generation</h4>
-                  <p className="text-gray-600">Instantly create comprehensive notes from any topic using advanced AI technology.</p>
-                </div>
+        {/* Our Story */}
+        <div className="mb-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+            <div className="order-2 lg:order-1">
+              <h2 className="text-3xl font-light text-gray-900 mb-6">Our Story</h2>
+              <div className="space-y-4 text-lg text-gray-600 leading-relaxed">
+                <p>
+                  Notopy was born from a simple observation: despite all the technological advancements in education, 
+                  note-taking remains largely unchanged—tedious, time-consuming, and often ineffective.
+                </p>
+                <p>
+                  Founded in 2024 by a team of educators, designers, and AI specialists, we set out to create a 
+                  platform that transforms how people capture and organize information. By combining advanced AI 
+                  with beautiful visual design, we've created a tool that generates notes that 
+                  are not just informative but also engaging and memorable.
+                </p>
+                <p>
+                  Our mission is to make learning more accessible and enjoyable for everyone, from students 
+                  preparing for exams to professionals documenting complex projects.
+                </p>
               </div>
-              <div className="flex items-start">
-                <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center mr-4 mt-1">
-                  <span className="text-white text-sm">✓</span>
+            </div>
+            <div className="order-1 lg:order-2 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-24 h-24 bg-black rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
                 </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Visual Excellence</h4>
-                  <p className="text-gray-600">Beautiful, hand-drawn aesthetics that make notes engaging and memorable.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center mr-4 mt-1">
-                  <span className="text-white text-sm">✓</span>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Multiple Formats</h4>
-                  <p className="text-gray-600">Study guides, mind maps, timelines, and more - optimized for different learning styles.</p>
-                </div>
+                <h3 className="text-xl font-medium text-gray-900 mb-2">Innovation in Education</h3>
+                <p className="text-gray-600">Making learning more visual, engaging, and effective through AI technology.</p>
               </div>
             </div>
           </div>
-          <div className="bg-gray-50 rounded-lg p-8 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-24 h-24 bg-black rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </div>
+
+        {/* Our Values */}
+        <div className="mb-24">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-light text-gray-900 mb-4">
+              Our <span className="font-medium">Values</span>
+            </h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              The principles that guide everything we do at Notopy
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-white rounded-lg border border-gray-100 p-8 hover:shadow-lg transition-all duration-300">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">Innovation in Education</h3>
-              <p className="text-gray-600">Making learning more visual, engaging, and effective through AI technology.</p>
+              <h3 className="text-xl font-medium text-gray-900 mb-3 text-center">Innovation</h3>
+              <p className="text-gray-600 text-center">
+                We constantly push the boundaries of what's possible with AI and education technology.
+              </p>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-100 p-8 hover:shadow-lg transition-all duration-300">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-medium text-gray-900 mb-3 text-center">Accessibility</h3>
+              <p className="text-gray-600 text-center">
+                We believe powerful learning tools should be available to everyone, regardless of background or resources.
+              </p>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-100 p-8 hover:shadow-lg transition-all duration-300">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-medium text-gray-900 mb-3 text-center">Quality</h3>
+              <p className="text-gray-600 text-center">
+                We're committed to creating notes that are not just beautiful but also accurate, comprehensive, and useful.
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
-          <div className="text-center p-8 bg-white rounded-lg border border-gray-100">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-medium text-gray-900 mb-3">Fast & Efficient</h3>
-            <p className="text-gray-600">Generate comprehensive notes in seconds, saving hours of manual work.</p>
-          </div>
-          <div className="text-center p-8 bg-white rounded-lg border border-gray-100">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-medium text-gray-900 mb-3">Beautiful Design</h3>
-            <p className="text-gray-600">Hand-drawn aesthetics and colorful layouts that make studying enjoyable.</p>
-          </div>
-          <div className="text-center p-8 bg-white rounded-lg border border-gray-100">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-medium text-gray-900 mb-3">Learning Focused</h3>
-            <p className="text-gray-600">Designed specifically for students, researchers, and professionals.</p>
-          </div>
-        </div>
-
-        <div className="bg-gray-50 rounded-lg p-12">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl font-light text-gray-900 mb-6">Why Choose Notopy?</h2>
-            <p className="text-lg text-gray-600 leading-relaxed mb-8">
-              Traditional note-taking is time-consuming and often results in bland, hard-to-review content. 
-              Notopy changes that by combining the power of AI with beautiful visual design to create notes 
-              that are not only informative but also engaging and memorable.
+        {/* Note Templates */}
+        <div className="mb-24">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-light text-gray-900 mb-4">
+              Beautiful <span className="font-medium">note templates</span>
+            </h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Choose from a variety of professionally designed templates
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3">For Students</h4>
-                <p className="text-gray-600">Transform your study materials into visually appealing notes that improve retention and make studying more enjoyable.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                title: "Creative Collage",
+                description: "Colorful, hand-drawn style with organic layouts and visual elements",
+                color: "bg-gradient-to-br from-purple-50 to-purple-100",
+                accent: "border-purple-300"
+              },
+              {
+                title: "Academic Study",
+                description: "Clean, structured format perfect for research and academic work",
+                color: "bg-gradient-to-br from-blue-50 to-blue-100",
+                accent: "border-blue-300"
+              },
+              {
+                title: "Mind Map",
+                description: "Visual connections showing relationships between concepts and ideas",
+                color: "bg-gradient-to-br from-green-50 to-green-100",
+                accent: "border-green-300"
+              }
+            ].map((style, index) => (
+              <div 
+                key={index} 
+                className={`rounded-lg p-8 shadow-sm hover:shadow-md transition-all duration-300 border-l-4 ${style.accent} ${style.color}`}
+              >
+                <h3 className="text-xl font-medium text-gray-900 mb-3">{style.title}</h3>
+                <p className="text-gray-600 mb-6">{style.description}</p>
+                <div className="h-32 bg-white rounded-lg shadow-sm flex items-center justify-center">
+                  <span className="text-gray-400">Note preview</span>
+                </div>
               </div>
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3">For Professionals</h4>
-                <p className="text-gray-600">Create professional documentation and meeting notes that impress colleagues and stakeholders.</p>
+            ))}
+          </div>
+        </div>
+        
+        {/* How It Works */}
+        <div className="mb-24">
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-12">
+            <div className="max-w-3xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-4xl font-light text-gray-900 mb-4">
+                  How <span className="font-medium">it works</span>
+                </h2>
+                <p className="text-lg text-gray-600">
+                  Create beautiful notes in just a few simple steps
+                </p>
               </div>
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3">For Researchers</h4>
-                <p className="text-gray-600">Organize complex information into structured, easy-to-navigate notes that support your research workflow.</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3">For Educators</h4>
-                <p className="text-gray-600">Generate engaging teaching materials and lesson plans that capture students' attention and improve learning outcomes.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-white rounded-lg p-6 shadow-sm">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-medium">1</span>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-medium text-gray-900 mb-2">Enter your topic</h3>
+                      <p className="text-gray-600">
+                        Simply type any subject you want to learn about or document. Our AI will analyze your topic and prepare to generate comprehensive notes.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-lg p-6 shadow-sm">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-medium">2</span>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-medium text-gray-900 mb-2">Choose a template</h3>
+                      <p className="text-gray-600">
+                        Select from multiple note formats based on your needs, from creative collages to academic study guides to mind maps.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-lg p-6 shadow-sm">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-medium">3</span>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-medium text-gray-900 mb-2">Generate your notes</h3>
+                      <p className="text-gray-600">
+                        Our advanced AI creates beautiful, structured notes instantly, organizing information with proper hierarchy and visual elements.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-lg p-6 shadow-sm">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-medium">4</span>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-medium text-gray-900 mb-2">Export and share</h3>
+                      <p className="text-gray-600">
+                        Download your notes as PDF, PNG, or HTML files to study offline or share with classmates and colleagues.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* CTA Section */}
       <section className="border-t border-gray-100 bg-gray-50">
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="max-w-4xl mx-auto text-center">
