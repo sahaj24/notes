@@ -2,7 +2,6 @@
 
 import { useEffect, useState, ReactNode } from 'react';
 
-
 interface ClientOnlyProps {
   children: ReactNode;
 }
@@ -15,15 +14,13 @@ export default function ClientOnly({ children }: ClientOnlyProps) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // Longer delay to ensure hydration is complete before showing content
-    const timer = setTimeout(() => {
-      setIsClient(true);
-    }, 500);
-    
-    return () => clearTimeout(timer);
+    // Immediate client-side rendering to prevent delays
+    setIsClient(true);
   }, []);
 
-
+  if (!isClient) {
+    return null;
+  }
 
   // Return children only on client-side
   return <>{children}</>;

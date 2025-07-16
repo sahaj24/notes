@@ -13,20 +13,12 @@ export const CoinDisplay: React.FC<CoinDisplayProps> = ({
   showDetails = false, 
   className = '' 
 }) => {
-  const { profile, transactions, loading } = useUserProfile();
+  const { profile, transactions } = useUserProfile();
   const { user } = useAuth();
   const [showTransactions, setShowTransactions] = useState(false);
 
-  if (!user || loading) {
-    return (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <div className="w-6 h-6 bg-gray-200 rounded-full animate-pulse"></div>
-        <div className="w-12 h-4 bg-gray-200 rounded animate-pulse"></div>
-      </div>
-    );
-  }
-
-  if (!profile) {
+  // Simple check - if no user or profile, don't show anything
+  if (!user || !profile) {
     return null;
   }
 

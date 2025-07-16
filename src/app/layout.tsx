@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +33,9 @@ export default function RootLayout({
       >
         <AuthProvider>
           <UserProfileProvider>
-            {children}
+            <LoadingOverlay>
+              {children}
+            </LoadingOverlay>
           </UserProfileProvider>
         </AuthProvider>
       </body>

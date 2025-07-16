@@ -1,14 +1,24 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function AuthCallback() {
   const router = useRouter();
+  const [hasProcessed, setHasProcessed] = useState(false);
 
   useEffect(() => {
+    // Prevent multiple processing attempts
+    if (hasProcessed) return;
+    
+    let isMounted = true;
+    
     const handleAuthCallback = async () => {
+      if (!isMounted) return;
+      
+      setHasProcessed(true);
+      
       try {
         // Get the URL hash from the browser
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -22,6 +32,8 @@ export default function AuthCallback() {
             refresh_token: refreshToken
           });
           
+          if (!isMounted) return;
+          
           if (error) {
             console.error('Error setting session:', error);
             router.replace('/login?error=session_error');
@@ -30,13 +42,20 @@ export default function AuthCallback() {
           
           if (data.session) {
             console.log('Session set successfully');
-            router.replace('/notes');
+            // Add a small delay to ensure auth context updates
+            setTimeout(() => {
+              if (isMounted) {
+                router.replace('/notes');
+              }
+            }, 500);
             return;
           }
         }
         
         // Fallback to getting the session normally
         const { data, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
         
         if (error) {
           console.error('Auth callback error:', error);
@@ -46,27 +65,41 @@ export default function AuthCallback() {
 
         if (data.session) {
           // Successfully authenticated, redirect to notes
-          router.replace('/notes');
+          setTimeout(() => {
+            if (isMounted) {
+              router.replace('/notes');
+            }
+          }, 500);
         } else {
           // No session, redirect to login
           router.replace('/login');
         }
       } catch (error) {
+        if (!isMounted) return;
         console.error('Auth callback error:', error);
         router.replace('/login?error=callback_failed');
       }
     };
 
-    // Add a timeout to prevent infinite loading
+    // Shorter timeout to prevent long loading states
     const timeoutId = setTimeout(() => {
-      console.warn('Auth callback timeout - redirecting to login');
-      router.replace('/login?error=timeout');
-    }, 10000); // 10 second timeout
+      if (isMounted && !hasProcessed) {
+        console.warn('Auth callback timeout - redirecting to login');
+        router.replace('/login?error=timeout');
+      }
+    }, 5000); // Reduced to 5 seconds
 
-    handleAuthCallback();
+    // Small delay to ensure DOM is ready
+    const initTimeout = setTimeout(() => {
+      handleAuthCallback();
+    }, 100);
 
-    return () => clearTimeout(timeoutId);
-  }, [router]);
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      clearTimeout(initTimeout);
+    };
+  }, []); // Remove router dependency to prevent re-runs
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

@@ -54,7 +54,7 @@ export const useUserProfile = () => {
 };
 
 export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, session } = useAuth();
+  const { user, session, isReady } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -230,20 +230,12 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
-  // Track if refresh is in progress to prevent multiple simultaneous refreshes
-
-
   useEffect(() => {
-    // Skip during SSR to prevent hydration mismatch
     if (typeof window === 'undefined') return;
-    
-    // Prevent multiple refreshes
-    if (isRefreshing) return;
+    if (!isReady || isRefreshing) return;
     
     if (user && session) {
       setIsRefreshing(true);
-      
-      // Use Promise.all to run both refreshes in parallel
       Promise.all([
         refreshProfile(),
         refreshTransactions()
@@ -255,7 +247,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setProfile(null);
       setTransactions([]);
     }
-  }, [user, session]);
+  }, [isReady, user?.id, session?.access_token]);
 
   const value: UserProfileContextType = {
     profile,

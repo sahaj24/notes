@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -12,19 +12,30 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   useEffect(() => {
-    // Clear any auth errors from URL
+    // Skip during SSR
+    if (typeof window === 'undefined') return;
+    
+    // Prevent multiple redirects
+    if (hasRedirected) return;
+    
     const hasError = searchParams.get('error');
+    
     if (hasError && user) {
       // User is authenticated despite the error, clean the URL
+      setHasRedirected(true);
       router.replace('/notes');
     } else if (!loading && !user) {
+      // Only redirect if we're not loading and definitely no user
+      setHasRedirected(true);
       router.push('/login');
     }
-  }, [user, loading, router, searchParams]);
+  }, [user?.id, loading, hasRedirected]); // Use user.id instead of full user object
 
-  if (loading) {
+  // Show loading only if we're actually loading and haven't redirected
+  if (loading && !hasRedirected) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
@@ -35,9 +46,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  if (!user) {
+  // Don't render anything if no user and we haven't redirected yet
+  if (!user && !hasRedirected) {
     return null;
   }
 
-  return <>{children}</>;
+  // Only render children if we have a user
+  if (user) {
+    return <>{children}</>;
+  }
+
+  return null;
 };

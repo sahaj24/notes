@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isReady: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signInWithGoogle: () => Promise<{ error: any }>;
@@ -28,89 +29,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Track if auth initialization has been completed
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Skip auth initialization during SSR to prevent hydration mismatch
-    if (typeof window === 'undefined') return;
-    
-    // Prevent multiple initializations
-    if (isInitialized) return;
-    
     let isMounted = true;
-    
-    // Fallback timeout to ensure loading doesn't persist indefinitely
-    const timeout = setTimeout(() => {
-      if (isMounted) {
-        console.warn('Auth loading timeout - forcing loading to false');
-        setLoading(false);
-      }
-    }, 10000); // 10 second timeout
 
-    // Get initial session
     const initializeAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (!isMounted) return;
-        
+
         if (error) {
           console.error('Error getting initial session:', error);
         }
-        
-        setSession(session);
+
         setUser(session?.user ?? null);
+        setSession(session);
         setLoading(false);
-        setIsInitialized(true);
-        
-        // Create user profile if it doesn't exist
+        setIsReady(true);
+
+        // Create profile if needed for new users
         if (session?.user) {
-          createUserProfileIfNeeded(session.user);
+          createUserProfileIfNeeded(session.user).catch(console.error);
         }
       } catch (error) {
         if (!isMounted) return;
         console.error('Error in getSession:', error);
         setLoading(false);
-        setIsInitialized(true);
+        setIsReady(true);
       }
     };
 
-    // Initialize auth
     initializeAuth();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
+      (event: AuthChangeEvent, session: Session | null) => {
         if (!isMounted) return;
-        
-        setSession(session);
+
         setUser(session?.user ?? null);
+        setSession(session);
         setLoading(false);
-        
-        // Create user profile on signup or signin
-        if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
-          await createUserProfileIfNeeded(session.user);
+        setIsReady(true);
+
+        if (event === 'SIGNED_IN' && session?.user) {
+          createUserProfileIfNeeded(session.user).catch(console.error);
         }
       }
     );
 
     return () => {
       isMounted = false;
-      clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, [isInitialized]);
+  }, []);
 
   const createUserProfileIfNeeded = async (user: User) => {
     try {
       console.log('Checking/creating profile for user:', user.email);
-      
-      // First, wait a bit for any triggers to complete
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check if profile exists
+
+      // Quick check if profile exists without delay for existing users
       const { data: existingProfile, error: checkError } = await supabase
         .from('user_profiles')
         .select('id, coins, tier')
@@ -120,17 +98,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (checkError && checkError.code === 'PGRST116') {
         // Profile doesn't exist, create it
         console.log('Creating new user profile for:', user.email);
-        
+
+        // Only add delay for new profile creation
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         const { data: insertedProfile, error: insertError } = await supabase
           .from('user_profiles')
           .insert({
             id: user.id,
             email: user.email,
-            full_name: user.user_metadata?.full_name || 
-                      user.user_metadata?.name || 
-                      user.user_metadata?.firstName + ' ' + user.user_metadata?.lastName ||
-                      user.email?.split('@')[0] || 
-                      '',
+            full_name: user.user_metadata?.full_name ||
+              user.user_metadata?.name ||
+              user.user_metadata?.firstName + ' ' + user.user_metadata?.lastName ||
+              user.email?.split('@')[0] ||
+              '',
             coins: 30, // Welcome bonus
             tier: 'free'
           })
@@ -148,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } else {
           console.log('User profile created successfully:', insertedProfile);
-          
+
           // Record welcome bonus transaction
           const { error: transError } = await supabase
             .from('user_transactions')
@@ -183,6 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else if (existingProfile) {
         console.log('User profile already exists:', existingProfile);
+        // No delay needed for existing users
       } else {
         console.error('Error checking user profile:', checkError);
       }
@@ -224,11 +206,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         },
       });
-      
+
       if (error) {
         console.error('Google sign in error:', error);
       }
-      
+
       return { error };
     } catch (err) {
       console.error('Unexpected error during Google sign in:', err);
@@ -244,6 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     session,
     loading,
+    isReady,
     signIn,
     signUp,
     signInWithGoogle,

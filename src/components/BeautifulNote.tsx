@@ -687,9 +687,8 @@ export const BeautifulNote: React.FC = () => {
     }
   };
 
-  // Load history when user logs in
+  // Load history when user is authenticated
   useEffect(() => {
-    // Skip during SSR to prevent hydration mismatch
     if (typeof window === 'undefined') return;
     
     if (user && session) {
@@ -697,7 +696,7 @@ export const BeautifulNote: React.FC = () => {
     } else {
       setHistory([]);
     }
-  }, [user, session]);
+  }, [user?.id, session?.access_token]);
 
   // Load a note from history
   const loadFromHistory = async (noteId: string) => {
@@ -781,18 +780,7 @@ export const BeautifulNote: React.FC = () => {
     };
   }, [currentStep, topic, noteHtml]);
 
-  // Load note history on component mount
-  useEffect(() => {
-    // Skip during SSR to prevent hydration mismatch
-    if (typeof window === 'undefined') return;
-    
-    // Debounce the history fetch with a small delay
-    const timer = setTimeout(() => {
-      fetchHistory();
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, []);
+  // This useEffect is removed - history loading is now handled by the auth-ready useEffect above
 
   // Close user menu when clicking outside
   useEffect(() => {
