@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
 interface AuthContextType {
@@ -29,7 +29,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Track if auth initialization has been completed
+  const [isInitialized, setIsInitialized] = useState(false);
+
   useEffect(() => {
+    // Skip auth initialization during SSR to prevent hydration mismatch
+    if (typeof window === 'undefined') return;
+    
+    // Prevent multiple initializations
+    if (isInitialized) return;
+    
     let isMounted = true;
     
     // Fallback timeout to ensure loading doesn't persist indefinitely
@@ -41,29 +50,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 10000); // 10 second timeout
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (!isMounted) return;
-      
-      if (error) {
-        console.error('Error getting initial session:', error);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        if (error) {
+          console.error('Error getting initial session:', error);
+        }
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+        setIsInitialized(true);
+        
+        // Create user profile if it doesn't exist
+        if (session?.user) {
+          createUserProfileIfNeeded(session.user);
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Error in getSession:', error);
+        setLoading(false);
+        setIsInitialized(true);
       }
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      
-      // Create user profile if it doesn't exist
-      if (session?.user) {
-        createUserProfileIfNeeded(session.user);
-      }
-    }).catch((error) => {
-      if (!isMounted) return;
-      console.error('Error in getSession:', error);
-      setLoading(false);
-    });
+    };
+
+    // Initialize auth
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: AuthChangeEvent, session: Session | null) => {
         if (!isMounted) return;
         
         setSession(session);
@@ -82,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [isInitialized]);
 
   const createUserProfileIfNeeded = async (user: User) => {
     try {
@@ -194,13 +213,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    return { error };
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        },
+      });
+      
+      if (error) {
+        console.error('Google sign in error:', error);
+      }
+      
+      return { error };
+    } catch (err) {
+      console.error('Unexpected error during Google sign in:', err);
+      return { error: err };
+    }
   };
 
   const signOut = async () => {

@@ -689,6 +689,9 @@ export const BeautifulNote: React.FC = () => {
 
   // Load history when user logs in
   useEffect(() => {
+    // Skip during SSR to prevent hydration mismatch
+    if (typeof window === 'undefined') return;
+    
     if (user && session) {
       fetchHistory();
     } else {
@@ -732,40 +735,63 @@ export const BeautifulNote: React.FC = () => {
 
   // Add keyboard shortcuts
   useEffect(() => {
+    // Skip during SSR to prevent hydration mismatch
+    if (typeof window === 'undefined') return;
+    
+    // Debounce keyboard events to prevent multiple triggers
+    let keyboardDebounceTimer: NodeJS.Timeout;
+    
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key) {
-          case 'n':
-            e.preventDefault();
-            resetToInput();
-            break;
-          case 's':
-            e.preventDefault();
-            if (noteHtml) {
-              handleExport();
-            }
-            break;
-          case 'Enter':
-            e.preventDefault();
-            if (currentStep === 'input' && topic.trim()) {
-              handleGenerateNote();
-            }
-            break;
+      // Clear any existing timer
+      clearTimeout(keyboardDebounceTimer);
+      
+      // Set a new timer
+      keyboardDebounceTimer = setTimeout(() => {
+        if (e.ctrlKey || e.metaKey) {
+          switch (e.key) {
+            case 'n':
+              e.preventDefault();
+              resetToInput();
+              break;
+            case 's':
+              e.preventDefault();
+              if (noteHtml) {
+                handleExport();
+              }
+              break;
+            case 'Enter':
+              e.preventDefault();
+              if (currentStep === 'input' && topic.trim()) {
+                handleGenerateNote();
+              }
+              break;
+          }
+        } else if (e.key === 'Escape') {
+          // Close panels on Escape
+          setShowHistory(false);
+          setShowHelp(false);
         }
-      } else if (e.key === 'Escape') {
-        // Close panels on Escape
-        setShowHistory(false);
-        setShowHelp(false);
-      }
+      }, 100); // Small debounce delay
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      clearTimeout(keyboardDebounceTimer);
+    };
   }, [currentStep, topic, noteHtml]);
 
   // Load note history on component mount
   useEffect(() => {
-    fetchHistory();
+    // Skip during SSR to prevent hydration mismatch
+    if (typeof window === 'undefined') return;
+    
+    // Debounce the history fetch with a small delay
+    const timer = setTimeout(() => {
+      fetchHistory();
+    }, 300);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Close user menu when clicking outside

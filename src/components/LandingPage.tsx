@@ -22,6 +22,12 @@ export const LandingPage: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<{ name: string; amount: string; coins: number } | null>(null);
 
   useEffect(() => {
+    // Skip during SSR to prevent hydration mismatch
+    if (typeof window === 'undefined') return;
+    
+    // Prevent multiple initializations
+    if (mounted) return;
+    
     setMounted(true);
     
     // Add a small delay then trigger animations
@@ -36,7 +42,7 @@ export const LandingPage: React.FC = () => {
     }, 200);
     
     return () => clearTimeout(timer);
-  }, []);
+  }, [mounted]);
 
   const handleShowApp = () => {
     setIsTransitioning(true);

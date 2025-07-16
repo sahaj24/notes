@@ -5,9 +5,16 @@ import { useUserProfile } from '@/contexts/UserProfileContext';
 import Link from 'next/link';
 import { PayPalSubscription } from '@/components/PayPalSubscription';
 
+// Extend window object for TypeScript
+declare global {
+  interface Window {
+    paypal: any;
+  }
+}
+
 export default function PricingPage() {
-  const { user } = useAuth();
-  const { profile } = useUserProfile();
+  const { user, session } = useAuth();
+  const { profile, refreshProfile } = useUserProfile();
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);

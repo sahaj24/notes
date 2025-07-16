@@ -1,0 +1,5 @@
+export const DEBOUNCE_TIMINGS = {
+  KEYBOARD: 150,
+  DATA_FETCH: 300,
+  UI_ANIMATION: 200
+};

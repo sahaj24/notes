@@ -9,9 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.1.0",
     "@supabase/supabase-js": "^2.50.5",
     "@types/canvas-confetti": "^1.9.0",
     "canvas-confetti": "^1.9.3",
+    "dotenv": "^17.2.0",
     "framer-motion": "^12.23.3",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",

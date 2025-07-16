@@ -58,6 +58,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refreshProfile = async () => {
     if (!user || !session) {
@@ -117,6 +118,12 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
       return { success: false, error: 'User not authenticated' };
     }
 
+    if (isRefreshing) {
+      console.log('Skipping deductCoins due to ongoing refresh');
+      return { success: false, error: 'Refresh in progress' };
+    }
+
+    setIsRefreshing(true);
     try {
       const response = await fetch('/api/user/coins', {
         method: 'POST',
@@ -134,8 +141,10 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const result = await response.json();
 
       if (response.ok && result.success) {
-        await refreshProfile();
-        await refreshTransactions();
+        await Promise.all([
+          refreshProfile(),
+          refreshTransactions()
+        ]);
         return { success: true };
       } else {
         return { success: false, error: result.error || 'Failed to deduct coins' };
@@ -143,6 +152,8 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } catch (error) {
       console.error('Error deducting coins:', error);
       return { success: false, error: 'Network error' };
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -151,6 +162,12 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
       return { success: false, error: 'User not authenticated' };
     }
 
+    if (isRefreshing) {
+      console.log('Skipping addCoins due to ongoing refresh');
+      return { success: false, error: 'Refresh in progress' };
+    }
+
+    setIsRefreshing(true);
     try {
       const response = await fetch('/api/user/coins', {
         method: 'POST',
@@ -168,8 +185,10 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const result = await response.json();
 
       if (response.ok && result.success) {
-        await refreshProfile();
-        await refreshTransactions();
+        await Promise.all([
+          refreshProfile(),
+          refreshTransactions()
+        ]);
         return { success: true };
       } else {
         return { success: false, error: result.error || 'Failed to add coins' };
@@ -177,6 +196,8 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } catch (error) {
       console.error('Error adding coins:', error);
       return { success: false, error: 'Network error' };
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -209,10 +230,27 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
+  // Track if refresh is in progress to prevent multiple simultaneous refreshes
+
+
   useEffect(() => {
+    // Skip during SSR to prevent hydration mismatch
+    if (typeof window === 'undefined') return;
+    
+    // Prevent multiple refreshes
+    if (isRefreshing) return;
+    
     if (user && session) {
-      refreshProfile();
-      refreshTransactions();
+      setIsRefreshing(true);
+      
+      // Use Promise.all to run both refreshes in parallel
+      Promise.all([
+        refreshProfile(),
+        refreshTransactions()
+      ])
+      .finally(() => {
+        setIsRefreshing(false);
+      });
     } else {
       setProfile(null);
       setTransactions([]);
