@@ -948,7 +948,7 @@ export const BeautifulNote: React.FC = () => {
         <div className="absolute top-16 right-0 w-80 h-full bg-white shadow-xl z-20 border-l border-gray-200">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Help & Shortcuts</h3>
+              <h3 className="text-lg font-medium text-gray-900">Quick Guide</h3>
               <button
                 onClick={() => setShowHelp(false)}
                 className="p-1 hover:bg-gray-100 rounded-lg transition-colors duration-200 text-gray-600 hover:text-gray-800"
@@ -961,55 +961,53 @@ export const BeautifulNote: React.FC = () => {
 
             <div className="space-y-6">
               <div>
-                <h4 className="font-medium text-gray-900 mb-3">Keyboard Shortcuts</h4>
-                <div className="space-y-2">
-                  {keyboardShortcuts.map((shortcut, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-600">{shortcut.action}</span>
-                      <kbd className="px-2 py-1 bg-gray-200 rounded text-xs font-mono text-gray-600">
-                        {shortcut.key}
-                      </kbd>
-                    </div>
-                  ))}
+                <h4 className="font-medium text-gray-900 mb-3">How to Use Notopy</h4>
+                <div className="space-y-3">
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <h5 className="font-medium text-blue-900 mb-1">1. Enter a Topic</h5>
+                    <p className="text-sm text-blue-700">
+                      Type any subject you want to learn about in the input field.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <h5 className="font-medium text-blue-900 mb-1">2. Select Pages</h5>
+                    <p className="text-sm text-blue-700">
+                      Choose how many pages of notes you need (each page costs 1 coin).
+                    </p>
+                  </div>
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <h5 className="font-medium text-blue-900 mb-1">3. Generate</h5>
+                    <p className="text-sm text-blue-700">
+                      Click "Generate Note" and watch as AI creates beautiful notes for you.
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <div>
-                <h4 className="font-medium text-gray-900 mb-3">Tips for Better Notes</h4>
-                <div className="space-y-2">
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <h5 className="font-medium text-blue-900 mb-1">Be Specific</h5>
-                    <p className="text-sm text-blue-700">
-                      Include specific details about what you want to focus on for more relevant notes.
+                <h4 className="font-medium text-gray-900 mb-3">Pro Tips</h4>
+                <div className="space-y-3">
+                  <div className="p-3 bg-green-50 rounded-lg">
+                    <h5 className="font-medium text-green-900 mb-1">Be Specific</h5>
+                    <p className="text-sm text-green-700">
+                      "Quantum physics basics for beginners" works better than just "quantum physics".
                     </p>
                   </div>
                   <div className="p-3 bg-green-50 rounded-lg">
-                    <h5 className="font-medium text-green-900 mb-1">Choose the Right Template</h5>
+                    <h5 className="font-medium text-green-900 mb-1">Save Your Work</h5>
                     <p className="text-sm text-green-700">
-                      Different templates work better for different types of content. Try experimenting!
-                    </p>
-                  </div>
-                  <div className="p-3 bg-purple-50 rounded-lg">
-                    <h5 className="font-medium text-purple-900 mb-1">Add Context</h5>
-                    <p className="text-sm text-purple-700">
-                      Use the additional details field to provide context or specific requirements.
+                      Use the Export button to download your notes as PNG, PDF, or HTML.
                     </p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h4 className="font-medium text-gray-900 mb-3">Template Guide</h4>
-                <div className="space-y-2">
-                  {templates.map((template) => (
-                    <div key={template.id} className="p-2 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="text-lg">{template.icon}</span>
-                        <span className="text-sm font-medium text-gray-900">{template.name}</span>
-                      </div>
-                      <p className="text-xs text-gray-600">{template.description}</p>
-                    </div>
-                  ))}
+                <h4 className="font-medium text-gray-900 mb-3">Need More Coins?</h4>
+                <div className="p-3 bg-purple-50 rounded-lg">
+                  <p className="text-sm text-purple-700">
+                    Visit the <a href="/pricing" className="font-medium underline">Pricing Page</a> to purchase more coins and generate more notes.
+                  </p>
                 </div>
               </div>
             </div>

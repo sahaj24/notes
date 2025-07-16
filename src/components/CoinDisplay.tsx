@@ -46,7 +46,7 @@ export const CoinDisplay: React.FC<CoinDisplayProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center">
         {/* Coin Display */}
         <button
           onClick={() => setShowTransactions(!showTransactions)}
@@ -58,12 +58,8 @@ export const CoinDisplay: React.FC<CoinDisplayProps> = ({
           </div>
           <span className="font-semibold text-gray-900">{profile.coins}</span>
         </button>
-
-        {/* Tier Badge */}
-        <div className={`px-3 py-1 rounded-full text-sm font-medium ${getTierColor(profile.tier)}`}>
-          <span className="mr-1">{getTierIcon(profile.tier)}</span>
-          {profile.tier.charAt(0).toUpperCase() + profile.tier.slice(1)}
-        </div>
+        
+        {/* Tier Badge removed */}
       </div>
 
       {/* Detailed Info */}

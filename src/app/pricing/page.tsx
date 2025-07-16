@@ -236,7 +236,7 @@ export default function PricingPage() {
             <span className="font-medium">pricing</span>
           </h1>
           <p className="text-xl text-gray-600 leading-relaxed font-light">
-            Pay per note with our coin system. No subscriptions, no monthly fees - just pay for what you use.
+            No signup required•Free tier available•Enterprise ready
           </p>
         </div>
 
@@ -319,7 +319,7 @@ export default function PricingPage() {
                 onClick={() => openModal('100 Coins', '4.99', 100)}
                 className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
               >
-                Subscribe
+                Pay Now
               </button>
             </div>
           </div>
@@ -371,7 +371,7 @@ export default function PricingPage() {
                 onClick={() => openModal('500 Coins', '19.99', 500)}
                 className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
               >
-                Subscribe
+                Pay Now
               </button>
             </div>
           </div>
@@ -420,7 +420,7 @@ export default function PricingPage() {
                 onClick={() => openModal('1500 Coins', '59.99', 1500)}
                 className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
               >
-                Subscribe
+                Pay Now
               </button>
             </div>
           </div>

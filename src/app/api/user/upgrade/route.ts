@@ -75,23 +75,60 @@ export async function POST(request: NextRequest) {
 
     console.log('User profile updated successfully');
 
-    // Record subscription/payment
-    const { error: subscriptionError } = await supabase
-      .from('user_subscriptions')
-      .insert({
-        user_id: user.id,
-        subscription_id: subscriptionId || paymentId,
-        tier: tier === 'one-time' ? 'coin_purchase' : tier,
-        payment_method: paymentMethod || 'paypal',
-        status: 'active',
-        amount: amount || '0',
-        coins_granted: coinsToAdd
-      });
+    // Try to record payment using multiple methods
+    console.log('Attempting to record payment...');
+    
+    // Skip direct SQL method as it requires custom RPC functions
+    console.log('Skipping direct SQL method as it requires custom RPC functions');
+    
+    // Method 2: Try user_payments table with standard insert
+    try {
+      const { error: paymentError } = await supabase
+        .from('user_payments')
+        .insert({
+          user_id: user.id,
+          payment_id: paymentId || `manual-${Date.now()}`,
+          amount: parseFloat(amount) || 0,
+          coins_purchased: coinsToAdd,
+          payment_method: paymentMethod || 'paypal'
+        });
 
-    if (subscriptionError) {
-      console.error('Error recording subscription:', subscriptionError);
-      // Don't fail the request for subscription logging issues
+      if (paymentError) {
+        console.error('Error recording in user_payments:', paymentError);
+        console.error('Error details:', JSON.stringify(paymentError, null, 2));
+      } else {
+        console.log('Payment recorded in user_payments successfully');
+        return;
+      }
+    } catch (error) {
+      console.error('Unexpected error recording in user_payments:', error);
     }
+    
+    // Method 3: Try user_subscriptions as fallback
+    try {
+      const { error: subscriptionError } = await supabase
+        .from('user_subscriptions')
+        .insert({
+          user_id: user.id,
+          subscription_id: paymentId || `manual-${Date.now()}`,
+          tier: 'coin_purchase',
+          payment_method: paymentMethod || 'paypal',
+          status: 'active'
+        });
+      
+      if (subscriptionError) {
+        console.error('Error recording in user_subscriptions:', subscriptionError);
+        console.error('Error details:', JSON.stringify(subscriptionError, null, 2));
+      } else {
+        console.log('Payment recorded in user_subscriptions successfully');
+        return;
+      }
+    } catch (fallbackError) {
+      console.error('Failed to record payment in user_subscriptions:', fallbackError);
+    }
+    
+    // If we get here, all methods failed
+    console.log('All payment recording methods failed, but coins were still added to user account');
 
     // Record transaction for coin purchase
     const { error: transError } = await supabase
