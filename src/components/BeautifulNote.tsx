@@ -50,14 +50,14 @@ export const BeautifulNote: React.FC = () => {
   const cropCanvas = (sourceCanvas: HTMLCanvasElement): HTMLCanvasElement => {
     const ctx = sourceCanvas.getContext('2d');
     if (!ctx) return sourceCanvas;
-    
+
     const imageData = ctx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
     const data = imageData.data;
-    
+
     let minX = sourceCanvas.width, minY = sourceCanvas.height, maxX = 0, maxY = 0;
     const backgroundRGB = [244, 244, 244]; // #f4f4f4 background color
     const tolerance = 10; // Color tolerance for cropping
-    
+
     // Find the bounds of non-background content
     for (let y = 0; y < sourceCanvas.height; y++) {
       for (let x = 0; x < sourceCanvas.width; x++) {
@@ -66,14 +66,14 @@ export const BeautifulNote: React.FC = () => {
         const g = data[index + 1];
         const b = data[index + 2];
         const a = data[index + 3];
-        
+
         // Check if pixel is significantly different from background
         const isContent = a > 128 && (
           Math.abs(r - backgroundRGB[0]) > tolerance ||
           Math.abs(g - backgroundRGB[1]) > tolerance ||
           Math.abs(b - backgroundRGB[2]) > tolerance
         );
-        
+
         if (isContent) {
           minX = Math.min(minX, x);
           minY = Math.min(minY, y);
@@ -82,26 +82,26 @@ export const BeautifulNote: React.FC = () => {
         }
       }
     }
-    
+
     // Add small padding around content
     const padding = 20;
     minX = Math.max(0, minX - padding);
     minY = Math.max(0, minY - padding);
     maxX = Math.min(sourceCanvas.width, maxX + padding);
     maxY = Math.min(sourceCanvas.height, maxY + padding);
-    
+
     // Create cropped canvas
     const croppedWidth = maxX - minX;
     const croppedHeight = maxY - minY;
-    
+
     if (croppedWidth <= 0 || croppedHeight <= 0) {
       return sourceCanvas; // Return original if cropping failed
     }
-    
+
     const croppedCanvas = document.createElement('canvas');
     croppedCanvas.width = croppedWidth;
     croppedCanvas.height = croppedHeight;
-    
+
     const croppedCtx = croppedCanvas.getContext('2d');
     if (croppedCtx) {
       croppedCtx.drawImage(
@@ -110,7 +110,7 @@ export const BeautifulNote: React.FC = () => {
         0, 0, croppedWidth, croppedHeight
       );
     }
-    
+
     return croppedCanvas;
   };
 
@@ -120,42 +120,229 @@ export const BeautifulNote: React.FC = () => {
       name: 'Creative Collage',
       description: 'Hand-drawn style with colorful elements and organic layouts',
       icon: '🎨',
-      color: 'bg-purple-500'
+      color: 'bg-purple-500',
+      emphasis: 'Use vibrant colors, organic shapes, and artistic flourishes. Make it feel like a creative art journal.',
+      colors: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd'],
+      specialInstructions: `
+        Create a vibrant, artistic collage that resembles a creative journal or sketchbook.
+        - Use a mix of handwritten-style fonts with varying sizes and rotations
+        - Add colorful backgrounds for different sections (pastels and bright colors)
+        - Include decorative elements like hand-drawn arrows, stars, and doodles
+        - Create an organic, flowing layout that feels artistic and playful
+        - Use sticky notes, torn paper effects, and tape elements for a scrapbook feel
+        - Vary text alignment and styling to create visual interest
+        - Add emphasis with underlines, highlights, and circled text
+      `
     },
     {
       id: 'academic',
       name: 'Academic Study',
       description: 'Professional format perfect for research and academic work',
       icon: '🎓',
-      color: 'bg-blue-500'
+      color: 'bg-blue-500',
+      emphasis: 'Use clean, structured layouts with academic formatting. Include proper citations and formal presentation.',
+      colors: ['#2c3e50', '#3498db', '#e74c3c', '#f39c12', '#27ae60', '#9b59b6'],
+      specialInstructions: `
+        Create a formal academic document that resembles a research paper or scholarly article:
+        
+        DOCUMENT STRUCTURE:
+        - Include a formal title, author section, and abstract at the top
+        - Organize content with numbered sections and subsections (1.0, 1.1, 1.2, etc.)
+        - Add page numbers and running headers
+        - Include a formal bibliography/references section at the end
+        
+        ACADEMIC ELEMENTS:
+        - Add proper in-text citations (Author, Year) throughout the document
+        - Include footnotes or endnotes for additional context
+        - Create definition boxes for key terms and concepts
+        - Add theorem/concept highlights with formal formatting
+        - Include numbered lists for procedures or sequential information
+        - Add footnotes or endnotes for additional context
+        - Use formal language and terminology appropriate for academic contexts
+        - Create tables for organizing complex information
+        - Include sections for key terms, definitions, and important concepts
+      `
     },
     {
-      id: 'mindmap',
-      name: 'Mind Map',
-      description: 'Visual connections and hierarchical information structure',
-      icon: '🧠',
-      color: 'bg-green-500'
+      id: 'cheatsheet',
+      name: 'Cheat Sheet',
+      description: 'Densely packed study reference with formulas and key facts',
+      icon: '📝',
+      color: 'bg-green-500',
+      emphasis: 'Create a compact, information-dense cheat sheet with minimal design and maximum content.',
+      colors: ['#000000', '#333333', '#666666', '#0066cc', '#cc0000', '#009900'],
+      specialInstructions: `
+        Create a dense, information-packed cheat sheet for studying:
+        
+        LAYOUT:
+        - Create a single-page, extremely dense reference sheet
+        - Use multiple columns (2-3) to maximize information density
+        - Minimize margins and white space to fit maximum content
+        - Use a clean, simple design with minimal decorative elements
+        
+        CONTENT ORGANIZATION:
+        - Group related information into clear sections with headers
+        - Include key definitions, formulas, and concepts
+        - Use bullet points and numbered lists for efficient information presentation
+        - Add brief examples where necessary for clarity
+        
+        TEXT FORMATTING:
+        - Use small font sizes to fit more content
+        - Bold or underline key terms for emphasis
+        - Use different font styles to distinguish between types of information
+        - Include mathematical formulas and equations where relevant
+        
+        VISUAL ELEMENTS:
+        - Use simple boxes or borders to separate sections
+        - Include minimal diagrams only if absolutely necessary
+        - Use symbols and abbreviations to save space
+        - Add reference numbers or quick lookup indicators
+        
+        IMPORTANT REQUIREMENTS:
+        - MUST be extremely dense with information
+        - MUST use minimal design elements to maximize content
+        - MUST organize information logically for quick reference
+        - MUST include all essential information in a compact format
+        - MUST be readable despite the high information density
+      `
     },
     {
       id: 'timeline',
       name: 'Timeline',
-      description: 'Chronological layout perfect for historical topics',
+      description: 'Sequential presentation of events or developments in chronological order',
       icon: '📅',
-      color: 'bg-yellow-500'
+      color: 'bg-yellow-500',
+      emphasis: 'Organize information chronologically with clear time markers and sequential flow.',
+      colors: ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a', '#172554'],
+      specialInstructions: `
+        Create a professional historical timeline with a clean, modern design:
+        
+        STRUCTURE:
+        - Use a vertical timeline with a prominent central line running down the middle
+        - Position events alternately on left and right sides of the timeline
+        - CRITICAL: Each event MUST connect to the central timeline with visible connector lines
+        - Use a clean white background with minimal textures or patterns
+        - Organize events chronologically from top to bottom
+        
+        EVENT CARDS:
+        - Create clean, modern event cards with subtle shadows
+        - Include a clear date, title, and description for each event
+        - Use a consistent card design throughout the timeline
+        - Add a small colored accent to each card (blue tones)
+        - Keep text highly readable with good contrast
+        
+        VISUAL ELEMENTS:
+        - Use circular markers where each event connects to the timeline
+        - Add clear connector lines between events and the timeline
+        - Include simple icons or small images where appropriate
+        - Use a clean, professional typography with good readability
+        
+        CONTENT ORGANIZATION:
+        - Group events into clear historical periods or eras
+        - Include era headers to separate different time periods
+        - For each event, include: date, title, and concise description
+        - Add brief context notes where helpful
+        
+        STYLING:
+        - Use a clean, modern aesthetic with plenty of white space
+        - Apply a professional blue color scheme for accents
+        - Create a visually balanced layout with proper spacing
+        - Ensure high contrast for readability
+        
+        IMPORTANT REQUIREMENTS:
+        - MUST use a clean white background (no textures or patterns)
+        - MUST have visible connector lines between events and timeline
+        - MUST alternate events on left and right sides
+        - MUST use a vertical layout (not horizontal)
+        - MUST have clear visual hierarchy with dates, titles, and descriptions
+      `
     },
     {
       id: 'comparison',
       name: 'Comparison',
       description: 'Side-by-side analysis and comparison charts',
       icon: '⚖️',
-      color: 'bg-red-500'
+      color: 'bg-red-500',
+      emphasis: 'Use parallel columns and comparison tables to highlight differences and similarities.',
+      colors: ['#3498db', '#2980b9', '#e74c3c', '#c0392b', '#27ae60', '#f39c12'],
+      specialInstructions: `
+        Create a clear comparison layout that effectively highlights similarities and differences:
+        
+        STRUCTURE:
+        - Use a two-column layout for direct comparisons between items
+        - Create comparison tables with clear headers and aligned rows
+        - Divide the page into distinct comparison sections
+        - Use a clean, organized layout with clear visual separation between compared items
+        
+        COMPARISON ELEMENTS:
+        - Include side-by-side tables with matching criteria for each item
+        - Use visual cues like checkmarks (✓) and X marks (✗) to show presence/absence
+        - Add rating systems (stars, numbers, or bars) for quantitative comparisons
+        - Create pro/con lists for each item being compared
+        - Include "versus" sections that directly contrast key points
+        
+        VISUAL ELEMENTS:
+        - Use color coding to distinguish between the items being compared
+        - Add clear headers and labels for each comparison category
+        - Include a legend explaining any symbols or scoring systems used
+        - Use Venn diagrams or other visual elements to show overlapping characteristics
+        
+        CONTENT ORGANIZATION:
+        - Group comparisons by category or feature
+        - Include summary sections that synthesize key differences and similarities
+        - Add conclusion or recommendation sections based on the comparison
+        - Ensure balanced coverage of all items being compared
+        
+        IMPORTANT REQUIREMENTS:
+        - MUST use a clean, organized layout with clear visual separation
+        - MUST include direct side-by-side comparisons
+        - MUST use visual elements to highlight differences and similarities
+        - MUST maintain consistent criteria across all compared items
+        - MUST include a summary or conclusion based on the comparison
+      `
     },
     {
       id: 'notebook',
       name: 'Classic Notebook',
-      description: 'Traditional lined paper with handwritten aesthetics',
+      description: 'Traditional handwritten notes on lined paper with annotations',
       icon: '📝',
-      color: 'bg-gray-500'
+      color: 'bg-gray-500',
+      emphasis: 'Mimic classic notebook paper with ruled lines and natural handwriting flow.',
+      colors: ['#2c3e50', '#34495e', '#7f8c8d', '#95a5a6', '#bdc3c7', '#ecf0f1'],
+      specialInstructions: `
+        Create a realistic notebook page with handwritten notes:
+        
+        PAPER STRUCTURE:
+        - Create blue horizontal ruled lines like college-ruled notebook paper
+        - Include a red vertical margin line on the left side
+        - Add subtle paper texture with slight discoloration
+        - Include realistic spiral binding graphics on the left edge
+        
+        HANDWRITING ELEMENTS:
+        - Use exclusively handwriting-style fonts that look like real pen writing
+        - Include natural handwriting imperfections like crossed-out words
+        - Add margin notes and annotations in different colored "pens"
+        - Include hand-drawn arrows connecting related concepts
+        
+        ORGANIZATION:
+        - Include a handwritten title and date at the top of the page
+        - Create a natural, slightly messy layout that maintains readability
+        - Use indentation and bullet points like a student would in real notes
+        - Add highlighting in yellow for important points
+        
+        VISUAL ELEMENTS:
+        - Include circled or starred items for emphasis
+        - Add small hand-drawn diagrams or illustrations where appropriate
+        - Use different pen colors for main text, important notes, and annotations
+        - Add realistic page number in the corner
+        
+        IMPORTANT REQUIREMENTS:
+        - MUST look like authentic handwritten notes
+        - MUST include ruled lines and margin line
+        - MUST use handwriting-style fonts exclusively
+        - MUST include annotations and highlighting
+        - MUST have a natural, slightly messy organization
+      `
     }
   ];
 
@@ -173,7 +360,7 @@ export const BeautifulNote: React.FC = () => {
     }
 
     const coinsRequired = pages;
-    
+
     // Check if user has enough coins
     if (user && profile && profile.coins < coinsRequired) {
       setCoinWarning(`You need ${coinsRequired} coins but only have ${profile.coins}. Please upgrade your account or earn more coins.`);
@@ -198,7 +385,7 @@ export const BeautifulNote: React.FC = () => {
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      
+
       // Add authorization header if user is logged in
       if (user && session) {
         headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -207,8 +394,8 @@ export const BeautifulNote: React.FC = () => {
       const response = await fetch('/api/generate-note', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ 
-          topic, 
+        body: JSON.stringify({
+          topic,
           template: selectedTemplate,
           pages
         }),
@@ -230,7 +417,7 @@ export const BeautifulNote: React.FC = () => {
       if (!data.noteHtml) {
         throw new Error("Received invalid note structure from server.");
       }
-      
+
       const cleanedHtml = data.noteHtml
         .replace(/```html\s*/g, '')
         .replace(/```\s*$/g, '')
@@ -257,19 +444,19 @@ export const BeautifulNote: React.FC = () => {
 
   const handleExport = async () => {
     if (!noteHtml) return;
-    
+
     // Close history panel and left sidebar when exporting
     console.log('Export clicked - closing history panel and left sidebar');
     setShowHistory(false);
     setSidebarVisible(false);
-    
+
     // Add delay to allow panels to close before taking screenshot/export
     if (exportFormat === 'image') {
       await new Promise(resolve => setTimeout(resolve, 500));
     } else if (exportFormat === 'pdf') {
       await new Promise(resolve => setTimeout(resolve, 300));
     }
-    
+
     setIsExporting(true);
     try {
       if (exportFormat === 'html') {
@@ -284,11 +471,11 @@ export const BeautifulNote: React.FC = () => {
       } else if (exportFormat === 'image') {
         // Simple and reliable PNG export method with proper styling and width
         console.log('Starting PNG export...');
-        
+
         // Get the actual dimensions from the iframe content with reasonable limits
         let contentWidth = 1200; // Default balanced width
         let contentHeight = 1000; // Default height
-        
+
         if (iframeRef.current?.contentDocument) {
           const iframeDoc = iframeRef.current.contentDocument;
           const body = iframeDoc.body;
@@ -300,7 +487,7 @@ export const BeautifulNote: React.FC = () => {
             console.log(`Detected content dimensions: ${detectedWidth}px, using: ${contentWidth}x${contentHeight}`);
           }
         }
-        
+
         // Get styles from the iframe document
         let iframeStyles = '';
         if (iframeRef.current?.contentDocument) {
@@ -308,7 +495,7 @@ export const BeautifulNote: React.FC = () => {
           const styleElements = iframeDoc.querySelectorAll('style');
           iframeStyles = Array.from(styleElements).map(style => style.textContent || '').join('\n');
         }
-        
+
         // Create a temporary container in the main document with minimal padding
         const container = document.createElement('div');
         container.style.position = 'absolute';
@@ -324,7 +511,7 @@ export const BeautifulNote: React.FC = () => {
         container.style.overflow = 'visible';
         container.style.minHeight = 'auto';
         container.style.height = 'auto';
-        
+
         // Create and add a style element with iframe styles
         const styleElement = document.createElement('style');
         styleElement.textContent = `
@@ -351,16 +538,16 @@ export const BeautifulNote: React.FC = () => {
             font-family: 'Caveat', cursive;
           }
         `;
-        
+
         // Add the style to document head temporarily
         document.head.appendChild(styleElement);
-        
+
         // Add class to container for styling
         container.className = 'temp-export-container';
-        
+
         // Set the HTML content directly from noteHtml with thorough cleaning
         let cleanedContent = noteHtml;
-        
+
         // Remove all markdown code block markers thoroughly
         cleanedContent = cleanedContent
           .replace(/```html\s*/g, '')           // Remove ```html at start
@@ -369,16 +556,16 @@ export const BeautifulNote: React.FC = () => {
           .replace(/```/g, '')                  // Remove any remaining ```
           .replace(/^\s*html\s*/i, '')          // Remove standalone 'html' text
           .trim();
-        
+
         container.innerHTML = cleanedContent;
-        
+
         // Add the container to the document
         document.body.appendChild(container);
-        
+
         try {
           // Wait a moment for fonts to load and render
           await new Promise(resolve => setTimeout(resolve, 1500)); // Increased wait time for better rendering
-          
+
           // Get the actual height after content is rendered with minimal buffer
           const actualHeight = Math.max(
             container.scrollHeight,
@@ -386,9 +573,9 @@ export const BeautifulNote: React.FC = () => {
             container.getBoundingClientRect().height,
             contentHeight // Also use the initial content height estimate
           );
-          
+
           console.log(`Container dimensions: ${contentWidth}x${actualHeight}`);
-          
+
           // Use html2canvas with minimal padding settings and then crop
           const canvas = await html2canvas(container, {
             backgroundColor: '#f4f4f4',
@@ -408,10 +595,10 @@ export const BeautifulNote: React.FC = () => {
               return element.tagName === 'SCRIPT' || element.tagName === 'NOSCRIPT';
             }
           });
-          
+
           // Auto-crop the canvas to remove excess whitespace
           const croppedCanvas = cropCanvas(canvas);
-          
+
           // Convert to PNG and download
           croppedCanvas.toBlob((blob: Blob | null) => {
             if (blob) {
@@ -428,7 +615,7 @@ export const BeautifulNote: React.FC = () => {
               throw new Error('Failed to create blob from canvas');
             }
           }, 'image/png', 1.0);
-          
+
         } catch (error) {
           console.error('PNG export error:', error);
           alert('Failed to export as PNG. Please try again or use the PDF export option.');
@@ -444,11 +631,11 @@ export const BeautifulNote: React.FC = () => {
       } else if (exportFormat === 'pdf') {
         // Direct PDF export using screenshot-to-PDF method
         console.log('Starting direct PDF export...');
-        
+
         // Get the actual dimensions from the iframe content with reasonable limits
         let contentWidth = 1200; // Default balanced width
         let contentHeight = 1000; // Default height
-        
+
         if (iframeRef.current?.contentDocument) {
           const iframeDoc = iframeRef.current.contentDocument;
           const body = iframeDoc.body;
@@ -460,7 +647,7 @@ export const BeautifulNote: React.FC = () => {
             console.log(`Detected content dimensions: ${detectedWidth}px, using: ${contentWidth}x${contentHeight}`);
           }
         }
-        
+
         // Get styles from the iframe document
         let iframeStyles = '';
         if (iframeRef.current?.contentDocument) {
@@ -468,7 +655,7 @@ export const BeautifulNote: React.FC = () => {
           const styleElements = iframeDoc.querySelectorAll('style');
           iframeStyles = Array.from(styleElements).map(style => style.textContent || '').join('\n');
         }
-        
+
         // Create a temporary container in the main document with minimal padding
         const container = document.createElement('div');
         container.style.position = 'absolute';
@@ -484,7 +671,7 @@ export const BeautifulNote: React.FC = () => {
         container.style.overflow = 'visible';
         container.style.minHeight = 'auto';
         container.style.height = 'auto';
-        
+
         // Create and add a style element with iframe styles
         const styleElement = document.createElement('style');
         styleElement.textContent = `
@@ -511,16 +698,16 @@ export const BeautifulNote: React.FC = () => {
             font-family: 'Caveat', cursive;
           }
         `;
-        
+
         // Add the style to document head temporarily
         document.head.appendChild(styleElement);
-        
+
         // Add class to container for styling
         container.className = 'temp-export-container';
-        
+
         // Set the HTML content directly from noteHtml with thorough cleaning
         let cleanedContent = noteHtml;
-        
+
         // Remove all markdown code block markers thoroughly
         cleanedContent = cleanedContent
           .replace(/```html\s*/g, '')           // Remove ```html at start
@@ -529,16 +716,16 @@ export const BeautifulNote: React.FC = () => {
           .replace(/```/g, '')                  // Remove any remaining ```
           .replace(/^\s*html\s*/i, '')          // Remove standalone 'html' text
           .trim();
-        
+
         container.innerHTML = cleanedContent;
-        
+
         // Add the container to the document
         document.body.appendChild(container);
-        
+
         try {
           // Wait a moment for fonts to load and render
           await new Promise(resolve => setTimeout(resolve, 1500)); // Increased wait time for better rendering
-          
+
           // Get the actual height after content is rendered with minimal buffer
           const actualHeight = Math.max(
             container.scrollHeight,
@@ -546,9 +733,9 @@ export const BeautifulNote: React.FC = () => {
             container.getBoundingClientRect().height,
             contentHeight // Also use the initial content height estimate
           );
-          
+
           console.log(`Container dimensions: ${contentWidth}x${actualHeight}`);
-          
+
           // Use html2canvas to capture the screenshot with minimal padding and then crop
           const canvas = await html2canvas(container, {
             backgroundColor: '#f4f4f4',
@@ -568,41 +755,41 @@ export const BeautifulNote: React.FC = () => {
               return element.tagName === 'SCRIPT' || element.tagName === 'NOSCRIPT';
             }
           });
-          
+
           // Auto-crop the canvas to remove excess whitespace
           const croppedCanvas = cropCanvas(canvas);
-          
+
           // Convert canvas to image data
           const imageData = croppedCanvas.toDataURL('image/png');
-          
+
           // Calculate PDF dimensions (A4 size with some margin)
           const pdfWidth = 210; // A4 width in mm
           const pdfHeight = 297; // A4 height in mm
           const margin = 10; // 10mm margin
           const maxImageWidth = pdfWidth - (margin * 2);
           const maxImageHeight = pdfHeight - (margin * 2);
-          
+
           // Calculate image dimensions to fit in PDF using cropped canvas
           const imageWidth = croppedCanvas.width;
           const imageHeight = croppedCanvas.height;
           const aspectRatio = imageWidth / imageHeight;
-          
+
           let finalWidth = maxImageWidth;
           let finalHeight = maxImageWidth / aspectRatio;
-          
+
           // If height exceeds page, scale down
           if (finalHeight > maxImageHeight) {
             finalHeight = maxImageHeight;
             finalWidth = maxImageHeight * aspectRatio;
           }
-          
+
           // Create PDF
           const pdf = new jsPDF({
             orientation: finalHeight > finalWidth ? 'portrait' : 'landscape',
             unit: 'mm',
             format: 'a4'
           });
-          
+
           // Add the image to PDF
           pdf.addImage(
             imageData,
@@ -614,15 +801,15 @@ export const BeautifulNote: React.FC = () => {
             undefined,
             'FAST'
           );
-          
+
           // Generate filename
           const filename = `note-${topic.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`;
-          
+
           // Download the PDF
           pdf.save(filename);
-          
+
           console.log('PDF export (direct download) successful!');
-          
+
         } catch (error) {
           console.error('PDF export error:', error);
           alert('Failed to export as PDF. Please try again or use the PNG export option.');
@@ -690,7 +877,7 @@ export const BeautifulNote: React.FC = () => {
   // Load history when user is authenticated
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     if (user && session) {
       fetchHistory();
     } else {
@@ -714,7 +901,7 @@ export const BeautifulNote: React.FC = () => {
       if (response.ok) {
         const result = await response.json();
         const note = result.data;
-        
+
         setTopic(note.title);
         setSelectedTemplate(note.template);
         setPages(note.pages || 1);
@@ -736,14 +923,14 @@ export const BeautifulNote: React.FC = () => {
   useEffect(() => {
     // Skip during SSR to prevent hydration mismatch
     if (typeof window === 'undefined') return;
-    
+
     // Debounce keyboard events to prevent multiple triggers
     let keyboardDebounceTimer: NodeJS.Timeout;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Clear any existing timer
       clearTimeout(keyboardDebounceTimer);
-      
+
       // Set a new timer
       keyboardDebounceTimer = setTimeout(() => {
         if (e.ctrlKey || e.metaKey) {
@@ -794,7 +981,7 @@ export const BeautifulNote: React.FC = () => {
     if (showUserMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-    
+
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showUserMenu]);
 
@@ -805,11 +992,11 @@ export const BeautifulNote: React.FC = () => {
 
   const handleLogout = async () => {
     console.log('🔥 LOGOUT CLICKED!'); // Debug
-    
+
     try {
       setShowUserMenu(false);
       console.log('🔄 Starting signOut process...'); // Debug
-      
+
       // Try multiple logout approaches
       try {
         await signOut();
@@ -823,17 +1010,17 @@ export const BeautifulNote: React.FC = () => {
           console.log('✅ Direct supabase signOut successful'); // Debug
         }
       }
-      
+
       // Clear state and redirect regardless
       console.log('🧹 Clearing state...'); // Debug
       setHistory([]);
       setNoteHtml(null);
       setTopic('');
       setCurrentStep('input');
-      
+
       console.log('🔀 Redirecting to login...'); // Debug
       window.location.href = '/login';
-      
+
     } catch (error) {
       console.error('💥 Complete logout failure:', error);
       // Force redirect anyway
@@ -862,11 +1049,11 @@ export const BeautifulNote: React.FC = () => {
               <h1 className="text-xl font-medium text-gray-900">Notopy</h1>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             {/* Coin Display for authenticated users */}
             {user && <CoinDisplay />}
-            
+
             <button
               onClick={() => setShowHistory(!showHistory)}
               className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 text-gray-700 hover:text-gray-900"
@@ -886,7 +1073,7 @@ export const BeautifulNote: React.FC = () => {
               </svg>
               <span className="text-sm font-medium">Help</span>
             </button>
-            
+
             {noteHtml && (
               <div className="flex items-center space-x-2">
                 <select
@@ -898,7 +1085,7 @@ export const BeautifulNote: React.FC = () => {
                   <option value="image">PNG Image</option>
                   <option value="pdf">PDF (Print)</option>
                 </select>
-                
+
                 <button
                   onClick={handleExport}
                   disabled={isExporting}
@@ -923,7 +1110,7 @@ export const BeautifulNote: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              
+
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                   <div className="px-4 py-2 border-b border-gray-100">
@@ -1038,7 +1225,7 @@ export const BeautifulNote: React.FC = () => {
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none h-20 bg-white text-gray-900 placeholder-gray-500 font-sans"
                     disabled={isLoading}
                   />
-                  
+
                   {/* Example topics */}
                   <div className="mt-3">
                     <p className="text-sm text-gray-500 mb-2">Try these examples:</p>
@@ -1090,7 +1277,7 @@ export const BeautifulNote: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-2">
                     {pages > 1 ? `Each page will build upon the previous one with continuing content.` : 'A single comprehensive page with all the content.'}
                   </p>
-                  
+
                   {/* Cost Display */}
                   <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <div className="flex items-center justify-between">
@@ -1153,11 +1340,10 @@ export const BeautifulNote: React.FC = () => {
                       <button
                         key={template.id}
                         onClick={() => setSelectedTemplate(template.id)}
-                        className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
-                          selectedTemplate === template.id
-                            ? 'border-black bg-gray-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
+                        className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${selectedTemplate === template.id
+                          ? 'border-black bg-gray-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                          }`}
                       >
                         <div className="flex items-center space-x-3">
                           <div className={`w-12 h-12 rounded-lg ${template.color} flex items-center justify-center text-xl shadow-md`}>
@@ -1268,15 +1454,15 @@ export const BeautifulNote: React.FC = () => {
         </div>
 
         {/* Toggle Button */}
-        <button 
+        <button
           onClick={() => setSidebarVisible(!sidebarVisible)}
           className="absolute left-0 top-1/2 transform -translate-y-1/2 z-30 bg-white border border-gray-300 shadow-lg p-2 rounded-r-lg hover:bg-gray-50 transition-all duration-200 text-gray-700 hover:text-gray-900"
           style={{ left: sidebarVisible ? '24rem' : '0' }}
         >
-          <svg 
-            className={`w-5 h-5 transition-transform duration-200 ${sidebarVisible ? 'rotate-180' : ''}`} 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            className={`w-5 h-5 transition-transform duration-200 ${sidebarVisible ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1319,7 +1505,7 @@ export const BeautifulNote: React.FC = () => {
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">Crafting your beautiful note...</h2>
                 <p className="text-gray-600 mb-4">This may take a few moments as our AI creates something special</p>
-                
+
                 {/* Status messages */}
                 <div className="max-w-md mx-auto">
                   <div className="text-sm text-gray-500 space-y-1">
@@ -1328,11 +1514,11 @@ export const BeautifulNote: React.FC = () => {
                       <span>Analyzing your topic...</span>
                     </div>
                     <div className="flex items-center justify-center space-x-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       <span>Structuring content...</span>
                     </div>
                     <div className="flex items-center justify-center space-x-2">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                       <span>Applying visual design...</span>
                     </div>
                   </div>
@@ -1389,7 +1575,7 @@ export const BeautifulNote: React.FC = () => {
                     </svg>
                   )}
                 </button>
-                
+
                 <button
                   onClick={async () => {
                     console.log('Print clicked - closing history panel and left sidebar');
@@ -1438,7 +1624,7 @@ export const BeautifulNote: React.FC = () => {
                 </svg>
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-4">
               {history.length === 0 ? (
                 <div className="text-center text-gray-500 mt-8">

@@ -1,0 +1,4843 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const GEMINI_API_KEYS = [
+  'AIzaSyD2maptK3FUHCnFc6Y9cBRQuYRP1nB9WqQ', // Primary key
+  'AIzaSyCGdZSIfov85L3e7tFLOm_H7GyCWLh6A54'  // Backup key
+];
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+export async function POST(request: NextRequest) {
+  try {
+    const { topic, template, pages } = await request.json();
+    const authHeader = request.headers.get('authorization');
+
+    if (!topic) {
+      return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
+    }
+
+    // Validate pages parameter
+    const numPages = pages && pages >= 1 && pages <= 10 ? pages : 1;
+    const coinsRequired = numPages; // 1 coin per page
+
+    // Check authentication if provided
+    let user = null;
+    let userProfile = null;
+
+    if (authHeader) {
+      // Create authenticated Supabase client
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+
+      if (!authError && authUser) {
+        user = authUser;
+
+        // Get user profile to check coins
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (!profileError && profile) {
+          userProfile = profile;
+
+          // Check if user has enough coins
+          if (profile.coins < coinsRequired) {
+            return NextResponse.json({
+              error: `Insufficient coins. You need ${coinsRequired} coins but have ${profile.coins}`,
+              coinsRequired,
+              coinsAvailable: profile.coins
+            }, { status: 402 }); // Payment required
+          }
+
+          // No monthly limits - users can use all their coins freely
+          // We already checked if they have enough coins above, so no additional limits needed
+        }
+      }
+    }
+
+    // Create a new prompt that asks for HTML/CSS output
+    const prompt = createHtmlPrompt(topic, template, numPages);
+
+    // Call Gemini API with backup key failover
+    let response: Response | undefined;
+    let lastError: any = null;
+
+    // Try each API key
+    for (let keyIndex = 0; keyIndex < GEMINI_API_KEYS.length; keyIndex++) {
+      const currentKey = GEMINI_API_KEYS[keyIndex];
+      const keyLabel = keyIndex === 0 ? 'Primary' : `Backup ${keyIndex}`;
+
+      console.log(`Trying ${keyLabel} API key...`);
+
+      // Try current key with retries
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          response = await fetch(`${GEMINI_API_URL}?key=${currentKey}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: prompt,
+                    },
+                  ],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.9,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: numPages > 1 ? 16384 : 8192,
+              },
+            }),
+          });
+
+          if (response.ok) {
+            console.log(`✅ Success with ${keyLabel} API key on attempt ${attempt + 1}`);
+            break; // Success, exit retry loop
+          }
+
+          // Log the specific error
+          const errorText = await response.text();
+          console.log(`❌ ${keyLabel} key attempt ${attempt + 1} failed: ${response.status} - ${errorText}`);
+          lastError = { status: response.status, message: errorText, key: keyLabel };
+
+          // If it's a rate limit or overload, try next key immediately
+          if (response.status === 503 || response.status === 429) {
+            console.log(`🔄 ${keyLabel} key overloaded, trying next key...`);
+            break; // Break retry loop, try next key
+          }
+
+          // For other errors, wait before retrying same key
+          if (attempt < 2) {
+            await new Promise(res => setTimeout(res, 1000 * (attempt + 1))); // Exponential backoff
+          }
+
+        } catch (e) {
+          console.error(`🚨 ${keyLabel} key attempt ${attempt + 1} network error:`, e);
+          lastError = { error: e, key: keyLabel };
+
+          if (attempt < 2) {
+            await new Promise(res => setTimeout(res, 1000 * (attempt + 1)));
+          }
+        }
+      }
+
+      // If we got a successful response, break out of key loop
+      if (response && response.ok) {
+        break;
+      }
+    }
+
+
+    if (!response || !response.ok) {
+      const errorBody = await response?.text() || "Unknown error";
+      console.error("Gemini API Error after retries:", errorBody);
+      throw new Error(`Gemini API error: ${response?.status || '500'}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.candidates || !data.candidates[0].content.parts[0].text) {
+      console.error("Invalid API response structure:", data);
+      throw new Error("Failed to get valid content from Gemini API.");
+    }
+
+    const generatedHtml = data.candidates[0].content.parts[0].text;
+
+    // If user is authenticated, deduct coins and save note
+    if (user && userProfile) {
+      try {
+        // Deduct coins using simple approach
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        // Calculate new coin balance and update profile
+        const previous_balance = userProfile.coins;
+        const new_balance = previous_balance - coinsRequired;
+
+        const updateData = {
+          coins: new_balance,
+          total_coins_spent: userProfile.total_coins_spent + coinsRequired,
+          total_notes_generated: userProfile.total_notes_generated + 1,
+          last_transaction: {
+            amount: coinsRequired,
+            transaction_type: 'deduction',
+            description: `Generated ${numPages} page note: "${topic.substring(0, 50)}${topic.length > 50 ? '...' : ''}"`,
+            previous_balance,
+            new_balance,
+            timestamp: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        };
+
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from('user_profiles')
+          .update(updateData)
+          .eq('id', user.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('Failed to deduct coins:', updateError);
+          return NextResponse.json({
+            error: 'Failed to process payment. Please try again.',
+            details: updateError.message
+          }, { status: 500 });
+        }
+
+        // Save note to database for history
+        const noteData = {
+          user_id: user.id,
+          title: topic.substring(0, 100), // Limit title length
+          content: generatedHtml,
+          template: template || 'creative',
+          pages: numPages,
+          coins_spent: coinsRequired,
+          created_at: new Date().toISOString()
+        };
+
+        const { data: savedNote, error: noteError } = await supabase
+          .from('user_notes')
+          .insert(noteData)
+          .select()
+          .single();
+
+        if (noteError) {
+          console.log('Note save failed but coins deducted:', noteError);
+          // Don't fail the request, just log the error
+        }
+
+        // Return success with updated coin balance
+        return NextResponse.json({
+          noteHtml: generatedHtml,
+          coinsRemaining: new_balance,
+          coinsSpent: coinsRequired,
+          profile: updatedProfile,
+          noteId: savedNote?.id || null,
+          saved: !!savedNote
+        });
+
+      } catch (dbError) {
+        console.error('Database error after note generation:', dbError);
+        // Note was generated but DB operations failed - still return the note
+        return NextResponse.json({
+          noteHtml: generatedHtml,
+          warning: 'Note generated but payment processing had issues. Please contact support.'
+        });
+      }
+    }
+
+    // The AI now returns a full HTML document, so we just send that back.
+    return NextResponse.json({
+      noteHtml: generatedHtml,
+      guestMode: true,
+      message: 'Sign up to save notes and track usage!'
+    });
+  } catch (error: any) {
+    console.error('Error generating note:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to generate note' },
+      { status: 500 }
+    );
+  }
+}
+
+function createHtmlPrompt(topic: string, template: string = 'creative', numPages: number = 1): string {
+  // Template-specific styling variations and specialized prompts
+  const templateStyles = {
+    creative: {
+      description: 'hand-drawn style with colorful elements and organic layouts',
+      emphasis: 'Use vibrant colors, organic shapes, and artistic flourishes. Make it feel like a creative art journal.',
+      colors: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd'],
+      specialInstructions: `
+        Create a vibrant, artistic collage that resembles a creative journal or sketchbook.
+        - Use a mix of handwritten-style fonts with varying sizes and rotations
+        - Add colorful backgrounds for different sections (pastels and bright colors)
+        - Include decorative elements like hand-drawn arrows, stars, and doodles
+        - Create an organic, flowing layout that feels artistic and playful
+        - Use sticky notes, torn paper effects, and tape elements for a scrapbook feel
+        - Vary text alignment and styling to create visual interest
+        - Add emphasis with underlines, highlights, and circled text
+      `
+    },
+    academic: {
+      description: 'professional format perfect for research and academic work',
+      emphasis: 'Use clean, structured layouts with academic formatting. Include proper citations and formal presentation.',
+      colors: ['#2c3e50', '#3498db', '#e74c3c', '#f39c12', '#27ae60', '#9b59b6'],
+      specialInstructions: `
+        Create a formal, academic document that resembles a research paper or scholarly notes.
+        - Use a structured, hierarchical organization with clear headings and subheadings
+        - Include proper citations and references in academic format
+        - Create definition boxes and theorem/concept highlights
+        - Use a clean, professional layout with minimal decorative elements
+        - Include numbered lists for procedures or sequential information
+        - Add footnotes or endnotes for additional context
+        - Use formal language and terminology appropriate for academic contexts
+        - Create tables for organizing complex information
+        - Include sections for key terms, definitions, and important concepts
+      `,
+      customCSS: `
+        body {
+          background-color: #f5f5f5;
+          background-image: none;
+          font-family: 'Noto Serif', serif;
+          padding: 2rem;
+          color: #333;
+        }
+        .note-paper {
+          background-color: #fff;
+          border-radius: 8px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+          padding: 3rem;
+          display: block;
+          max-width: 1200px;
+        }
+        h1 {
+          font-family: 'Playfair Display', serif;
+          font-size: 2.8rem;
+          color: #1a365d;
+          text-align: center;
+          margin-bottom: 2rem;
+          transform: none;
+          border-bottom: 3px double #3182ce;
+          padding-bottom: 1rem;
+          letter-spacing: 0.5px;
+        }
+        h2 {
+          font-family: 'Playfair Display', serif;
+          font-size: 2rem;
+          color: #1a365d;
+          transform: none;
+          border-left: 5px solid #3182ce;
+          padding-left: 1rem;
+          margin-top: 2.5rem;
+          margin-bottom: 1.5rem;
+          letter-spacing: 0.3px;
+        }
+        h3 {
+          font-family: 'Playfair Display', serif;
+          font-size: 1.5rem;
+          color: #2a4365;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+          border-bottom: 1px solid #cbd5e0;
+          padding-bottom: 0.5rem;
+        }
+        p, li {
+          font-family: 'Noto Serif', serif;
+          font-size: 1.1rem;
+          line-height: 1.8;
+          margin-bottom: 1rem;
+        }
+        .academic-header {
+          text-align: center;
+          margin-bottom: 3rem;
+          padding-bottom: 1.5rem;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .academic-title {
+          font-family: 'Playfair Display', serif;
+          font-size: 2.8rem;
+          color: #1a365d;
+          margin-bottom: 0.5rem;
+        }
+        .academic-subtitle {
+          font-family: 'Noto Serif', serif;
+          font-size: 1.4rem;
+          color: #4a5568;
+          font-style: italic;
+          margin-bottom: 1.5rem;
+        }
+        .academic-meta {
+          font-family: 'Noto Serif', serif;
+          font-size: 1rem;
+          color: #718096;
+        }
+        .definition-box {
+          background-color: #ebf8ff;
+          border: 1px solid #bee3f8;
+          border-radius: 6px;
+          padding: 1.5rem;
+          margin: 1.5rem 0;
+          position: relative;
+        }
+        .definition-title {
+          position: absolute;
+          top: -12px;
+          left: 20px;
+          background-color: #3182ce;
+          color: white;
+          padding: 0.2rem 1rem;
+          font-size: 0.9rem;
+          font-weight: bold;
+          border-radius: 4px;
+        }
+        .theorem-box {
+          background-color: #e6fffa;
+          border-left: 5px solid #38b2ac;
+          padding: 1.5rem;
+          margin: 1.5rem 0;
+          position: relative;
+        }
+        .theorem-title {
+          font-weight: bold;
+          color: #2c7a7b;
+          margin-bottom: 0.5rem;
+          font-size: 1.1rem;
+        }
+        .note-box {
+          background-color: #fffaf0;
+          border: 1px solid #feebc8;
+          border-radius: 6px;
+          padding: 1.5rem;
+          margin: 1.5rem 0;
+          position: relative;
+        }
+        .note-title {
+          position: absolute;
+          top: -12px;
+          left: 20px;
+          background-color: #dd6b20;
+          color: white;
+          padding: 0.2rem 1rem;
+          font-size: 0.9rem;
+          font-weight: bold;
+          border-radius: 4px;
+        }
+        .citation {
+          font-size: 0.95rem;
+          color: #4a5568;
+          margin-top: 0.5rem;
+          font-style: italic;
+          border-left: 3px solid #cbd5e0;
+          padding-left: 1rem;
+        }
+        .footnote-section {
+          margin-top: 3rem;
+          padding-top: 1.5rem;
+          border-top: 2px solid #e2e8f0;
+        }
+        .footnote {
+          font-size: 0.9rem;
+          color: #4a5568;
+          margin-bottom: 0.5rem;
+          padding-left: 1.5rem;
+          text-indent: -1.5rem;
+        }
+        .academic-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 1.5rem 0;
+          font-family: 'Noto Serif', serif;
+        }
+        .academic-table th {
+          background-color: #edf2f7;
+          color: #2d3748;
+          font-weight: bold;
+          padding: 0.8rem;
+          text-align: left;
+          border: 1px solid #cbd5e0;
+        }
+        .academic-table td {
+          padding: 0.8rem;
+          border: 1px solid #cbd5e0;
+        }
+        .academic-table tr:nth-child(even) {
+          background-color: #f7fafc;
+        }
+        .key-term {
+          font-weight: bold;
+          color: #2b6cb0;
+          border-bottom: 1px dotted #2b6cb0;
+        }
+        .highlight-text {
+          background-color: #fefcbf;
+          padding: 0 3px;
+        }
+        .section-number {
+          display: inline-block;
+          margin-right: 0.5rem;
+          font-weight: bold;
+        }
+        ol.numbered-list {
+          counter-reset: item;
+          list-style-type: none;
+          padding-left: 0;
+        }
+        ol.numbered-list li {
+          counter-increment: item;
+          margin-bottom: 0.8rem;
+          padding-left: 2rem;
+          position: relative;
+        }
+        ol.numbered-list li:before {
+          content: counter(item) ".";
+          position: absolute;
+          left: 0;
+          font-weight: bold;
+          color: #3182ce;
+        }
+        .abstract {
+          font-style: italic;
+          margin: 2rem 3rem;
+          line-height: 1.6;
+          color: #4a5568;
+          border-left: 4px solid #e2e8f0;
+          padding-left: 1.5rem;
+        }
+        .reference-list {
+          margin-top: 3rem;
+          padding-top: 1.5rem;
+          border-top: 2px solid #e2e8f0;
+        }
+        .reference-item {
+          margin-bottom: 1rem;
+          padding-left: 2rem;
+          text-indent: -2rem;
+          font-size: 0.95rem;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Noto+Serif:wght@400;700&display=swap');
+      `
+    },
+    cheatsheet: {
+      description: 'densely packed handwritten study cheat sheet',
+      emphasis: 'Create a compact, information-dense cheat sheet that looks handwritten with minimal design.',
+      colors: ['#000000', '#333333', '#666666', '#0066cc', '#cc0000', '#009900'],
+      specialInstructions: `
+        Create an EXTREMELY DENSE two-sided cheat sheet using this EXACT HTML structure:
+
+        <div class="note-paper">
+          <div class="side side-1">
+            <div class="side-label">SIDE 1: CORE CONCEPTS</div>
+            <div class="side-content">
+              <!-- LEFT SIDE CONTENT: Definitions, formulas, core concepts -->
+              <h2>Key Definitions</h2>
+              <!-- INCLUDE AT LEAST 20-30 DEFINITIONS HERE -->
+              
+              <h2>Important Formulas</h2>
+              <!-- INCLUDE AT LEAST 15-20 FORMULAS HERE -->
+              
+              <h2>Core Concepts</h2>
+              <!-- INCLUDE AT LEAST 15-20 CORE CONCEPTS HERE -->
+              
+              <h2>Fundamentals</h2>
+              <!-- INCLUDE AT LEAST 15-20 FUNDAMENTAL PRINCIPLES HERE -->
+              
+              <h2>Key Terms</h2>
+              <!-- INCLUDE AT LEAST 20-30 KEY TERMS HERE -->
+              
+              <h2>Classifications</h2>
+              <!-- INCLUDE AT LEAST 10-15 CLASSIFICATIONS HERE -->
+            </div>
+          </div>
+          
+          <div class="side side-2">
+            <div class="side-label">SIDE 2: APPLICATIONS</div>
+            <div class="side-content">
+              <!-- RIGHT SIDE CONTENT: Examples, applications, advanced topics -->
+              <h2>Examples</h2>
+              <!-- INCLUDE AT LEAST 15-20 EXAMPLES HERE -->
+              
+              <h2>Applications</h2>
+              <!-- INCLUDE AT LEAST 15-20 APPLICATIONS HERE -->
+              
+              <h2>Advanced Topics</h2>
+              <!-- INCLUDE AT LEAST 15-20 ADVANCED TOPICS HERE -->
+              
+              <h2>Tips & Tricks</h2>
+              <!-- INCLUDE AT LEAST 15-20 TIPS AND TRICKS HERE -->
+              
+              <h2>Common Mistakes</h2>
+              <!-- INCLUDE AT LEAST 10-15 COMMON MISTAKES HERE -->
+              
+              <h2>Quick Reference</h2>
+              <!-- INCLUDE AT LEAST 15-20 QUICK REFERENCE ITEMS HERE -->
+            </div>
+          </div>
+        </div>
+
+        CONTENT QUANTITY REQUIREMENTS:
+        - GENERATE EXTREME AMOUNTS OF CONTENT - at least 5000+ distinct facts, formulas, concepts, etc.
+        - Each section MUST have AT LEAST 50-100 items (not just a few)
+        - Fill BOTH sides COMPLETELY with extremely dense information
+        - Create enough content to fill at least 50+ pages if printed
+        - Include EXHAUSTIVE coverage of the topic - leave NOTHING out, no matter how minor
+        - If you run out of real information, CREATE PLAUSIBLE additional content
+        - KEEP GENERATING until you've filled the entire available space
+        - DO NOT STOP until you've created a truly comprehensive reference
+        - IMPORTANT: The final HTML MUST be at least 200,000 characters long
+        - CRITICAL: If your response is shorter than 200,000 characters, it will be rejected
+        - WARNING: Responses with insufficient content will be considered incomplete
+        - ESSENTIAL: Generate the ABSOLUTE MAXIMUM amount of content possible
+        - CRUCIAL: This is meant to be a MASSIVE reference document, not a brief summary
+
+        LAYOUT REQUIREMENTS:
+        - Use the EXACT HTML structure above with two distinct sides
+        - LEFT SIDE: Pack with definitions, formulas, and core concepts
+        - RIGHT SIDE: Pack with examples, applications, and advanced topics
+        - Use 4 narrow columns on EACH SIDE (total 8 columns across entire page)
+        - Pack MAXIMUM information on both sides - every millimeter should be used
+        - ZERO wasted white space anywhere on either side
+        - Information should be extremely crammed but still barely readable
+
+        HANDWRITTEN STYLE:
+        - Use handwriting-style fonts exclusively
+        - Make it look like someone wrote this quickly while studying
+        - Include abbreviations and shorthand (e.g., "w/" for "with", "&" for "and")
+        - Use arrows (→, ←, ↑, ↓) to show relationships
+        - Add small doodles or symbols where helpful
+
+        CONTENT STRUCTURE:
+        - Key definitions at the top
+        - Formulas/equations in boxes
+        - Lists with bullet points (•) or dashes (-)
+        - Important terms underlined or circled
+        - Step-by-step processes numbered (1, 2, 3...)
+        - Quick reference tables
+        - Memory tricks or mnemonics
+
+        MINIMAL DESIGN:
+        - NO fancy colors or gradients
+        - NO decorative elements
+        - Simple black ink on white paper look
+        - Only use blue or red ink for emphasis
+        - Basic underlines, circles, and boxes
+        - Hand-drawn divider lines
+
+        INFORMATION DENSITY:
+        - Include formulas, definitions, examples, tips, tricks
+        - Use abbreviations to save space
+        - Pack related info together
+        - Include "quick facts" sections
+        - Add memory aids and shortcuts
+        - Use symbols and arrows liberally
+
+        SECTIONS TO INCLUDE:
+        - Key Terms & Definitions
+        - Important Formulas/Rules
+        - Step-by-Step Processes
+        - Common Examples
+        - Tips & Tricks
+        - Things to Remember
+        - Quick Reference
+
+        HANDWRITTEN ELEMENTS:
+        - Underline important terms
+        - Circle key numbers or formulas
+        - Use arrows to connect related concepts
+        - Add small stars (*) next to important points
+        - Use brackets [ ] for additional notes
+        - Cross out and correct things (realistic handwriting)
+
+        SPACE OPTIMIZATION:
+        - Use margins for additional notes
+        - Write in small, compact handwriting
+        - Use abbreviations wherever possible
+        - Pack information vertically and horizontally
+        - No large empty spaces
+
+        MUST LOOK LIKE:
+        - A real student's handwritten cheat sheet
+        - Something you'd sneak into an exam
+        - Densely packed with useful information
+        - Minimal design, maximum content
+        - Authentic handwritten appearance
+      `,
+      customCSS: `
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap');
+        
+        body {
+          background-color: #ffffff;
+          font-family: 'Caveat', cursive;
+          padding: 0;
+          margin: 0;
+          color: #000000;
+          font-size: 1.1rem;
+          line-height: 1.3;
+          letter-spacing: 0;
+          width: 100vw;
+          overflow-x: hidden;
+          height: 100%;
+        }
+        
+        .note-paper {
+          background-color: #ffffff !important;
+          padding: 1rem !important;
+          display: block !important; /* Changed from flex to block */
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 auto !important; /* Added auto margins for centering */
+          position: relative !important;
+          overflow: visible !important;
+          min-height: 100vh !important;
+          height: auto !important;
+          box-sizing: border-box !important; /* Ensure padding is included in width */
+        }
+        
+        .side {
+          width: 100% !important; /* Changed from 50% to 100% */
+          padding: 1rem !important;
+          position: relative !important;
+          margin-bottom: 2rem !important;
+          box-sizing: border-box !important;
+        }
+        
+        .side-1 {
+          border-bottom: 2px solid #000 !important; /* Changed from right border to bottom */
+          margin-bottom: 3rem !important;
+          padding-bottom: 2rem !important;
+        }
+        
+        .side-2 {
+          border-top: 2px solid #000 !important; /* Changed from left border to top */
+          padding-top: 2rem !important;
+        }
+        
+        .side-content {
+          columns: 4 !important; /* Increased from 3 to 4 columns */
+          column-gap: 1.5rem !important; /* Increased gap for better readability */
+          column-fill: balance !important;
+          width: 100% !important; /* Ensure full width is used */
+        }
+        
+        .side-label {
+          text-align: center;
+          font-weight: bold;
+          font-size: 0.4rem;
+          margin: 0.05rem 0;
+          text-decoration: underline;
+          text-transform: uppercase;
+        }
+        
+        h1 {
+          font-family: 'Caveat', cursive;
+          font-size: 1.2rem;
+          font-weight: 700;
+          text-align: center;
+          margin: 0.2rem 0;
+          padding: 0;
+          color: #000;
+          text-decoration: underline;
+          column-span: all;
+        }
+        
+        h2 {
+          font-family: 'Caveat', cursive;
+          font-size: 0.9rem;
+          font-weight: 700;
+          margin: 0.4rem 0 0.1rem 0;
+          padding: 0;
+          color: #000;
+          text-decoration: underline;
+          break-after: avoid;
+        }
+        
+        h3 {
+          font-family: 'Caveat', cursive;
+          font-size: 0.8rem;
+          font-weight: 700;
+          margin: 0.3rem 0 0.1rem 0;
+          padding: 0;
+          color: #000;
+          break-after: avoid;
+        }
+        
+        p {
+          font-family: 'Caveat', cursive;
+          font-size: 0.7rem;
+          line-height: 1;
+          margin: 0.1rem 0;
+          padding: 0;
+          color: #000;
+        }
+        
+        ul, ol {
+          margin: 0.1rem 0;
+          padding-left: 0.8rem;
+        }
+        
+        li {
+          font-family: 'Caveat', cursive;
+          font-size: 0.7rem;
+          line-height: 1;
+          margin: 0;
+          padding: 0;
+          color: #000;
+        }
+        
+        .formula-box {
+          border: 1px solid #000;
+          padding: 0.2rem;
+          margin: 0.2rem 0;
+          font-family: 'Caveat', cursive;
+          font-size: 0.7rem;
+          break-inside: avoid;
+        }
+        
+        .key-term {
+          text-decoration: underline;
+          font-weight: 700;
+        }
+        
+        .red-text {
+          color: #cc0000;
+          font-weight: 700;
+        }
+        
+        .blue-text {
+          color: #0066cc;
+          font-weight: 700;
+        }
+        
+        .circled {
+          border: 1px solid #000;
+          border-radius: 50%;
+          padding: 2px 4px;
+          display: inline-block;
+          font-size: 0.7rem;
+        }
+        
+        .boxed {
+          border: 1px solid #000;
+          padding: 2px 4px;
+          display: inline-block;
+          margin: 0.1rem;
+        }
+        
+        .arrow {
+          font-size: 1rem;
+          font-weight: 700;
+        }
+        
+        .star {
+          color: #cc0000;
+          font-weight: 700;
+        }
+        
+        .margin-note {
+          font-size: 0.65rem;
+          color: #666;
+          font-style: italic;
+          margin-left: 0.5rem;
+        }
+        
+        .quick-ref {
+          border: 1px dashed #000;
+          padding: 0.4rem;
+          margin: 0.4rem 0;
+          background-color: #f5f5f5;
+          break-inside: avoid;
+        }
+        
+        .mnemonic {
+          font-style: italic;
+          color: #009900;
+          font-size: 0.75rem;
+          border-left: 2px solid #009900;
+          padding-left: 0.3rem;
+          margin: 0.2rem 0;
+        }
+        
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.7rem;
+          margin: 0.3rem 0;
+          break-inside: avoid;
+        }
+        
+        th, td {
+          border: 1px solid #000;
+          padding: 0.2rem;
+          text-align: left;
+        }
+        
+        th {
+          background-color: #f0f0f0;
+          font-weight: 700;
+        }
+        
+        .crossed-out {
+          text-decoration: line-through;
+          color: #666;
+        }
+        
+        .correction {
+          color: #cc0000;
+          font-weight: 700;
+        }
+        
+        .section-divider {
+          border-top: 1px solid #000;
+          margin: 0.5rem 0;
+          column-span: all;
+        }
+        .connector {
+          position: absolute;
+          height: 4px;
+          background: linear-gradient(90deg, rgba(0,0,0,0.2), rgba(0,0,0,0.4));
+          transform-origin: left center;
+          z-index: 30;
+          border-radius: 2px;
+        }
+        .connector::after {
+          content: '';
+          position: absolute;
+          right: -6px;
+          top: -6px;
+          width: 0;
+          height: 0;
+          border-top: 7px solid transparent;
+          border-bottom: 7px solid transparent;
+          border-left: 10px solid rgba(0,0,0,0.4);
+        }
+        .connector-central-1 {
+          background: linear-gradient(90deg, rgba(66, 153, 225, 0.6), rgba(56, 161, 105, 0.6));
+        }
+        .connector-central-1::after {
+          border-left-color: rgba(56, 161, 105, 0.6);
+        }
+        .connector-central-2 {
+          background: linear-gradient(90deg, rgba(66, 153, 225, 0.6), rgba(229, 62, 62, 0.6));
+        }
+        .connector-central-2::after {
+          border-left-color: rgba(229, 62, 62, 0.6);
+        }
+        .connector-central-3 {
+          background: linear-gradient(90deg, rgba(66, 153, 225, 0.6), rgba(214, 158, 46, 0.6));
+        }
+        .connector-central-3::after {
+          border-left-color: rgba(214, 158, 46, 0.6);
+        }
+        .connector-central-4 {
+          background: linear-gradient(90deg, rgba(66, 153, 225, 0.6), rgba(128, 90, 213, 0.6));
+        }
+        .connector-central-4::after {
+          border-left-color: rgba(128, 90, 213, 0.6);
+        }
+        .connector-branch-1 {
+          background: rgba(56, 161, 105, 0.4);
+        }
+        .connector-branch-1::after {
+          border-left-color: rgba(56, 161, 105, 0.4);
+        }
+        .connector-branch-2 {
+          background: rgba(229, 62, 62, 0.4);
+        }
+        .connector-branch-2::after {
+          border-left-color: rgba(229, 62, 62, 0.4);
+        }
+        .connector-branch-3 {
+          background: rgba(214, 158, 46, 0.4);
+        }
+        .connector-branch-3::after {
+          border-left-color: rgba(214, 158, 46, 0.4);
+        }
+        .connector-branch-4 {
+          background: rgba(128, 90, 213, 0.4);
+        }
+        .connector-branch-4::after {
+          border-left-color: rgba(128, 90, 213, 0.4);
+        }
+        .node-icon {
+          display: inline-flex;
+          width: 32px;
+          height: 32px;
+          line-height: 32px;
+          text-align: center;
+          background-color: white;
+          border-radius: 50%;
+          margin-right: 8px;
+          font-weight: bold;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .branch-node-1 .node-icon { color: #38a169; }
+        .branch-node-2 .node-icon { color: #e53e3e; }
+        .branch-node-3 .node-icon { color: #d69e2e; }
+        .branch-node-4 .node-icon { color: #805ad5; }
+        .branch-node-5 .node-icon { color: #38b2ac; }
+        .branch-node-6 .node-icon { color: #ed64a6; }
+        
+        .mindmap-legend {
+          position: absolute;
+          bottom: 30px;
+          right: 30px;
+          background-color: white;
+          border-radius: 12px;
+          padding: 1.2rem;
+          box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+          font-size: 0.9rem;
+          z-index: 200;
+          border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .mindmap-legend-title {
+          font-weight: 600;
+          margin-bottom: 0.8rem;
+          color: #2d3748;
+          font-size: 1rem;
+          border-bottom: 1px solid #edf2f7;
+          padding-bottom: 0.5rem;
+        }
+        
+        .legend-item {
+          display: flex;
+          align-items: center;
+          margin-bottom: 0.7rem;
+        }
+        
+        .legend-color {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          margin-right: 10px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .legend-label {
+          color: #4a5568;
+          font-size: 0.9rem;
+        }
+        
+        .legend-color-1 { background: linear-gradient(135deg, #48bb78, #38a169); }
+        .legend-color-2 { background: linear-gradient(135deg, #f56565, #e53e3e); }
+        .legend-color-3 { background: linear-gradient(135deg, #ecc94b, #d69e2e); }
+        .legend-color-4 { background: linear-gradient(135deg, #9f7aea, #805ad5); }
+        .legend-color-5 { background: linear-gradient(135deg, #4fd1c5, #38b2ac); }
+        .legend-color-6 { background: linear-gradient(135deg, #f687b3, #ed64a6); }
+        
+        .mindmap-controls {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          display: flex;
+          gap: 10px;
+        }
+        
+        .mindmap-control-button {
+          background-color: white;
+          border: none;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          cursor: pointer;
+          color: #4a5568;
+          font-size: 1.2rem;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .mindmap-control-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .mindmap-footer {
+          text-align: center;
+          margin-top: 3rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid #edf2f7;
+          color: #718096;
+          font-size: 0.9rem;
+        }
+        
+        .node-pulse {
+          position: absolute;
+          border-radius: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 5;
+        }
+        
+        .node-pulse::before {
+          content: '';
+          position: absolute;
+          width: 300%;
+          height: 300%;
+          top: -100%;
+          left: -100%;
+          background-color: rgba(66, 153, 225, 0.2);
+          border-radius: 50%;
+          animation: pulse 3s ease-out infinite;
+        }
+        
+        @keyframes pulse {
+          0% {
+            transform: scale(0.33);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 0;
+          }
+        }
+        
+        .node-highlight {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          top: 0;
+          left: 0;
+          border-radius: inherit;
+          box-shadow: 0 0 0 5px rgba(255,255,255,0.5);
+          animation: highlight 2s ease-in-out infinite;
+          z-index: -1;
+        }
+        
+        @keyframes highlight {
+          0%, 100% {
+            opacity: 0.5;
+          }
+          50% {
+            opacity: 0.8;
+          }
+        }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+      `
+    },
+    timeline: {
+      description: 'chronological layout perfect for historical topics',
+      emphasis: 'Create a professional historical timeline with clear connections between events.',
+      colors: ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a', '#172554'],
+      specialInstructions: `
+        Create a professional historical timeline with a clean, modern design:
+        
+        STRUCTURE:
+        - Use a vertical timeline with a prominent central line running down the middle
+        - Position events alternately on left and right sides of the timeline
+        - CRITICAL: Each event MUST connect to the central timeline with visible connector lines
+        - Use a clean white background with minimal textures or patterns
+        - Organize events chronologically from top to bottom
+        
+        EVENT CARDS:
+        - Create clean, modern event cards with subtle shadows
+        - Include a clear date, title, and description for each event
+        - Use a consistent card design throughout the timeline
+        - Add a small colored accent to each card (blue tones)
+        - Keep text highly readable with good contrast
+        
+        VISUAL ELEMENTS:
+        - Use circular markers where each event connects to the timeline
+        - Add clear connector lines between events and the timeline
+        - Include simple icons or small images where appropriate
+        - Use a clean, professional typography with good readability
+        
+        CONTENT ORGANIZATION:
+        - Group events into clear historical periods or eras
+        - Include era headers to separate different time periods
+        - For each event, include: date, title, and concise description
+        - Add brief context notes where helpful
+        
+        STYLING:
+        - Use a clean, modern aesthetic with plenty of white space
+        - Apply a professional blue color scheme for accents
+        - Create a visually balanced layout with proper spacing
+        - Ensure high contrast for readability
+        
+        IMPORTANT REQUIREMENTS:
+        - MUST use a clean white background (no textures or patterns)
+        - MUST have visible connector lines between events and timeline
+        - MUST alternate events on left and right sides
+        - MUST use a vertical layout (not horizontal)
+        - MUST have clear visual hierarchy with dates, titles, and descriptions
+      `,
+      customCSS: `
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+          background-color: #f8fafc;
+          font-family: 'Inter', sans-serif;
+          padding: 2rem;
+          margin: 0;
+          color: #1e293b;
+          line-height: 1.5;
+        }
+        
+        .note-paper {
+          background-color: #ffffff;
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          padding: 3rem 2rem;
+          max-width: 1000px;
+          margin: 0 auto;
+          position: relative;
+        }
+        
+        .timeline-header {
+          text-align: center;
+          margin-bottom: 4rem;
+        }
+        
+        .timeline-title {
+          font-size: 2.5rem;
+          font-weight: 700;
+          color: #1e3a8a;
+          margin-bottom: 0.5rem;
+        }
+        
+        .timeline-subtitle {
+          font-size: 1.2rem;
+          color: #64748b;
+          font-weight: 400;
+        }
+        
+        .timeline-container {
+          position: relative;
+          padding: 2rem 0;
+        }
+        
+        .timeline-line {
+          position: absolute;
+          left: 50%;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background-color: #3b82f6;
+          transform: translateX(-50%);
+          z-index: 1;
+        }
+        
+        .timeline-era {
+          position: relative;
+          margin: 4rem 0;
+          text-align: center;
+          z-index: 2;
+        }
+        
+        .timeline-era-marker {
+          display: inline-block;
+          background-color: #1e40af;
+          color: white;
+          padding: 0.75rem 2rem;
+          border-radius: 30px;
+          font-weight: 600;
+          box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
+        }
+        
+        .timeline-event {
+          position: relative;
+          margin-bottom: 4rem;
+          width: 45%;
+          z-index: 2;
+          clear: both;
+        }
+        
+        .timeline-event:nth-child(odd) {
+          float: left;
+          padding-right: 2rem;
+          text-align: right;
+        }
+        
+        .timeline-event:nth-child(even) {
+          float: right;
+          padding-left: 2rem;
+          text-align: left;
+        }
+        
+        .timeline-event-content {
+          background-color: white;
+          border-radius: 8px;
+          padding: 1.5rem;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          border-top: 4px solid #3b82f6;
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .timeline-event-content:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+        
+        .timeline-date {
+          display: inline-block;
+          background-color: #3b82f6;
+          color: white;
+          padding: 0.25rem 0.75rem;
+          border-radius: 4px;
+          font-weight: 600;
+          font-size: 0.9rem;
+          margin-bottom: 0.75rem;
+        }
+        
+        .timeline-event-title {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #1e293b;
+          margin-bottom: 0.75rem;
+        }
+        
+        .timeline-event-description {
+          color: #64748b;
+          font-size: 1rem;
+          line-height: 1.6;
+        }
+        
+        .timeline-marker {
+          position: absolute;
+          top: 1.5rem;
+          width: 20px;
+          height: 20px;
+          background-color: white;
+          border: 4px solid #3b82f6;
+          border-radius: 50%;
+          z-index: 3;
+          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+        }
+        
+        .timeline-event:nth-child(odd) .timeline-marker {
+          right: -10px;
+        }
+        
+        .timeline-event:nth-child(even) .timeline-marker {
+          left: -10px;
+        }
+        
+        .timeline-connector {
+          position: absolute;
+          top: 1.5rem;
+          height: 4px;
+          background-color: #3b82f6;
+          z-index: 2;
+        }
+        
+        .timeline-event:nth-child(odd) .timeline-connector {
+          right: 10px;
+          width: calc(2rem - 10px);
+        }
+        
+        .timeline-event:nth-child(even) .timeline-connector {
+          left: 10px;
+          width: calc(2rem - 10px);
+        }
+        
+        .timeline-category-political .timeline-date {
+          background-color: #2563eb;
+        }
+        
+        .timeline-category-political .timeline-marker {
+          border-color: #2563eb;
+          box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+        }
+        
+        .timeline-category-political .timeline-connector {
+          background-color: #2563eb;
+        }
+        
+        .timeline-category-cultural .timeline-date {
+          background-color: #8b5cf6;
+        }
+        
+        .timeline-category-cultural .timeline-marker {
+          border-color: #8b5cf6;
+          box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2);
+        }
+        
+        .timeline-category-cultural .timeline-connector {
+          background-color: #8b5cf6;
+        }
+        
+        .timeline-category-scientific .timeline-date {
+          background-color: #10b981;
+        }
+        
+        .timeline-category-scientific .timeline-marker {
+          border-color: #10b981;
+          box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+        }
+        
+        .timeline-category-scientific .timeline-connector {
+          background-color: #10b981;
+        }
+        
+        .timeline-image {
+          width: 100%;
+          height: 180px;
+          background-color: #f1f5f9;
+          border-radius: 6px;
+          margin: 1rem 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #94a3b8;
+          font-size: 0.9rem;
+        }
+        
+        .timeline-reference {
+          font-size: 0.8rem;
+          color: #94a3b8;
+          margin-top: 1rem;
+          font-style: italic;
+        }
+        
+        .timeline-context {
+          background-color: #f8fafc;
+          border-radius: 6px;
+          padding: 1rem;
+          margin: 2rem 0;
+          font-size: 0.95rem;
+          color: #475569;
+          border-left: 4px solid #cbd5e1;
+        }
+        
+        .timeline-legend {
+          display: flex;
+          justify-content: center;
+          gap: 2rem;
+          margin-top: 4rem;
+          padding: 1.5rem;
+          background-color: #f8fafc;
+          border-radius: 8px;
+        }
+        
+        .timeline-legend-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        
+        .timeline-legend-color {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+        }
+        
+        .timeline-legend-label {
+          font-size: 0.9rem;
+          color: #64748b;
+        }
+        
+        .timeline-legend-color-political {
+          background-color: #2563eb;
+        }
+        
+        .timeline-legend-color-cultural {
+          background-color: #8b5cf6;
+        }
+        
+        .timeline-legend-color-scientific {
+          background-color: #10b981;
+        }
+        
+        /* Clear fix for the timeline container */
+        .timeline-container::after {
+          content: "";
+          display: table;
+          clear: both;
+        }
+      `,
+      specialInstructions: `
+        Create a professional historical timeline that resembles a museum exhibit display board.
+        - Design a clean, vertical timeline with a prominent central axis line
+        - IMPORTANT: Connect each event directly to the central timeline with visible connector lines
+        - Use elegant date markers positioned alternately on left and right sides
+        - Create distinct visual sections for different historical periods with era banners
+        - Include professional typography with serif fonts for historical authenticity
+        - Add decorative borders and ornamental elements typical of museum displays
+        - Use a sophisticated color scheme with gold accents and deep historical colors
+        - Include detailed event descriptions with proper historical context
+        - Add visual hierarchy with different sized text for dates, titles, and descriptions
+        - Create professional event cards with subtle shadows and clean layouts
+        - CRITICAL: Ensure each event has a visible connection to the central timeline
+        - Include category indicators for different types of historical events
+        - Use elegant connecting lines and visual flow indicators
+        - Design the layout to look like a professional museum timeline exhibit
+      `,
+      customCSS: `
+        /* Reset grid layout for timeline */
+        .note-paper {
+          display: block !important;
+          grid-template-columns: none !important;
+          grid-auto-rows: auto !important;
+          grid-auto-flow: row !important;
+          gap: 0 !important;
+          background-color: #f8f5f0 !important;
+          background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d5c7a9' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 5v1H5z'/%3E%3C/g%3E%3C/svg%3E") !important;
+          border: 10px solid #d5c7a9 !important;
+          padding: 0 !important;
+          max-width: 900px !important;
+          margin: 0 auto !important;
+          box-shadow: 0 15px 50px rgba(0,0,0,0.4) !important;
+          position: relative !important;
+          overflow: visible !important;
+        }
+        
+        body {
+          background-color: #3c2f22;
+          background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23594a3a' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+          font-family: 'EB Garamond', serif;
+          padding: 3rem 0;
+          margin: 0;
+          color: #3e2723;
+        }
+        
+        /* Vintage paper texture overlay */
+        .note-paper::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 800 800'%3E%3Cg fill='none' stroke='%23d5c7a9' stroke-width='1'%3E%3Cpath d='M769 229L1037 260.9M927 880L731 737 520 660 309 538 40 599 295 764 126.5 879.5 40 599-197 493 102 382-31 229 126.5 79.5-69-63'/%3E%3Cpath d='M-31 229L237 261 390 382 603 493 308.5 537.5 101.5 381.5M370 905L295 764'/%3E%3Cpath d='M520 660L578 842 731 737 840 599 603 493 520 660 295 764 309 538 390 382 539 269 769 229 577.5 41.5 370 105 295 -36 126.5 79.5 237 261 102 382 40 599 -69 737 127 880'/%3E%3Cpath d='M520-140L578.5 42.5 731-63M603 493L539 269 237 261 370 105M902 382L539 269M390 382L102 382'/%3E%3Cpath d='M-222 42L126.5 79.5 370 105 539 269 577.5 41.5 927 80 769 229 902 382 603 493 731 737M295-36L577.5 41.5M578 842L295 764M40-201L127 80M102 382L-261 269'/%3E%3C/g%3E%3Cg fill='%23d5c7a9' opacity='0.05'%3E%3Ccircle cx='769' cy='229' r='5'/%3E%3Ccircle cx='539' cy='269' r='5'/%3E%3Ccircle cx='603' cy='493' r='5'/%3E%3Ccircle cx='731' cy='737' r='5'/%3E%3Ccircle cx='520' cy='660' r='5'/%3E%3Ccircle cx='309' cy='538' r='5'/%3E%3Ccircle cx='295' cy='764' r='5'/%3E%3Ccircle cx='40' cy='599' r='5'/%3E%3Ccircle cx='102' cy='382' r='5'/%3E%3Ccircle cx='127' cy='80' r='5'/%3E%3Ccircle cx='370' cy='105' r='5'/%3E%3Ccircle cx='578' cy='42' r='5'/%3E%3Ccircle cx='237' cy='261' r='5'/%3E%3Ccircle cx='390' cy='382' r='5'/%3E%3C/g%3E%3C/svg%3E");
+          opacity: 0.5;
+          z-index: 0;
+          pointer-events: none;
+        }
+        
+        /* Vintage stains */
+        .note-paper::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: 
+            radial-gradient(circle at 15% 10%, rgba(165, 42, 42, 0.07) 0%, rgba(165, 42, 42, 0) 20%),
+            radial-gradient(circle at 85% 30%, rgba(205, 133, 63, 0.05) 0%, rgba(205, 133, 63, 0) 25%),
+            radial-gradient(circle at 10% 60%, rgba(160, 82, 45, 0.06) 0%, rgba(160, 82, 45, 0) 30%),
+            radial-gradient(circle at 90% 90%, rgba(139, 69, 19, 0.08) 0%, rgba(139, 69, 19, 0) 20%);
+          z-index: 0;
+          pointer-events: none;
+        }
+        
+        /* Timeline header with vintage styling */
+        .timeline-header {
+          text-align: center;
+          padding: 3rem 2rem 2rem;
+          position: relative;
+          z-index: 1;
+          background-image: url("data:image/svg+xml,%3Csvg width='40' height='12' viewBox='0 0 40 12' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 6.172L6.172 0h5.656L0 11.828V6.172zm40 5.656L28.172 0h5.656L40 6.172v5.656zM6.172 12l12-12h3.656l12 12h-5.656L20 3.828 11.828 12H6.172zm12 0L20 10.172 21.828 12h-3.656z' fill='%23d5c7a9' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
+          border-bottom: 3px double #8d6e63;
+        }
+        
+        /* Vintage title styling */
+        .timeline-title {
+          font-family: 'Cinzel Decorative', serif;
+          font-size: 3.5rem;
+          color: #3e2723;
+          margin: 0 0 1rem;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+          position: relative;
+          display: inline-block;
+          text-shadow: 2px 2px 3px rgba(0,0,0,0.1);
+          line-height: 1.2;
+        }
+        
+        /* Decorative underline for title */
+        .timeline-title::after {
+          content: '';
+          position: absolute;
+          bottom: -10px;
+          left: 10%;
+          right: 10%;
+          height: 3px;
+          background: linear-gradient(90deg, transparent, #8d6e63, transparent);
+        }
+        
+        /* Subtitle with vintage font */
+        .timeline-subtitle {
+          font-family: 'EB Garamond', serif;
+          font-size: 1.5rem;
+          color: #5d4037;
+          font-style: italic;
+          margin: 1.5rem 0 0;
+          font-weight: 500;
+        }
+        
+        /* Decorative corner elements */
+        .corner {
+          position: absolute;
+          width: 80px;
+          height: 80px;
+          background-repeat: no-repeat;
+          background-size: contain;
+          z-index: 2;
+        }
+        
+        .corner-tl {
+          top: 10px;
+          left: 10px;
+          background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v2H2v38H0V0z' fill='%238d6e63' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+        
+        .corner-tr {
+          top: 10px;
+          right: 10px;
+          background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M80 0H40v2h38v38h2V0z' fill='%238d6e63' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+        
+        .corner-bl {
+          bottom: 10px;
+          left: 10px;
+          background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 80h40v-2H2V40H0v40z' fill='%238d6e63' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+        
+        .corner-br {
+          bottom: 10px;
+          right: 10px;
+          background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M80 80H40v-2h38V40h2v40z' fill='%238d6e63' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+        
+        /* Main timeline container */
+        .timeline-container {
+          position: relative;
+          padding: 3rem 2rem;
+          margin: 0;
+          z-index: 1;
+          overflow: hidden;
+          clear: both;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        
+        /* Vertical timeline line with texture */
+        .timeline-line {
+          position: absolute;
+          left: 50%;
+          top: 0;
+          bottom: 0;
+          width: 6px;
+          background-color: #8d6e63;
+          transform: translateX(-50%);
+          z-index: 5;
+          box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        /* Timeline line texture */
+        .timeline-line::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.2' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 5v1H5z'/%3E%3C/g%3E%3C/svg%3E");
+        }
+        
+        /* Era markers with vintage styling */
+        .timeline-era {
+          position: relative;
+          margin: 5rem 0;
+          text-align: center;
+          z-index: 10;
+        }
+        
+        .timeline-era-marker {
+          display: inline-block;
+          background-color: #5d4037;
+          color: #f2e8d5;
+          padding: 0.8rem 2rem;
+          font-family: 'Cinzel', serif;
+          font-weight: bold;
+          font-size: 1.3rem;
+          letter-spacing: 1px;
+          position: relative;
+          z-index: 10;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+          border: 1px solid #3e2723;
+          text-transform: uppercase;
+        }
+        
+        /* Era marker decorative elements */
+        .timeline-era-marker::before,
+        .timeline-era-marker::after {
+          content: '•';
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 1.5rem;
+          color: #8d6e63;
+        }
+        
+        .timeline-era-marker::before {
+          left: -20px;
+        }
+        
+        .timeline-era-marker::after {
+          right: -20px;
+        }
+        
+        /* Timeline events with vintage styling */
+        .timeline-event {
+          position: relative;
+          margin-bottom: 5rem;
+          width: 42%;
+          z-index: 5;
+          clear: both;
+        }
+        
+        /* Alternate events left and right */
+        .timeline-event:nth-child(odd) {
+          float: right;
+          margin-right: 30px;
+          clear: right;
+        }
+        
+        .timeline-event:nth-child(even) {
+          float: left;
+          margin-left: 30px;
+          clear: left;
+        }
+        
+        /* Event content styling with vintage paper effect */
+        .timeline-event-content {
+          background-color: #f8f3e6;
+          border: 1px solid #d3c7b1;
+          padding: 1.5rem;
+          position: relative;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+          transition: transform 0.3s ease;
+          z-index: 1;
+        }
+        
+        /* Aged paper effect */
+        .timeline-event-content::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23d3c7b1' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+          opacity: 0.5;
+          z-index: -1;
+        }
+        
+        /* Hover effect with vintage feel */
+        .timeline-event-content:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        
+        /* Connector lines with aged look */
+        .timeline-event:nth-child(odd) .timeline-event-content::after {
+          content: '';
+          position: absolute;
+          right: -40px;
+          top: 20px;
+          width: 40px;
+          height: 3px;
+          background-color: #8d6e63;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+          z-index: 1;
+        }
+        
+        .timeline-event:nth-child(even) .timeline-event-content::after {
+          content: '';
+          position: absolute;
+          left: -40px;
+          top: 20px;
+          width: 40px;
+          height: 3px;
+          background-color: #8d6e63;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+          z-index: 1;
+        }
+        
+        /* Vintage date styling */
+        .timeline-date {
+          display: inline-block;
+          font-family: 'Cinzel', serif;
+          font-weight: bold;
+          color: #f8f3e6;
+          margin-bottom: 1rem;
+          font-size: 1.1rem;
+          background-color: #5d4037;
+          padding: 0.4rem 1.2rem;
+          position: relative;
+          top: -12px;
+          letter-spacing: 1px;
+          border: 1px solid #3e2723;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+          text-transform: uppercase;
+        }
+        
+        /* Event title with vintage typography */
+        .timeline-event-title {
+          font-family: 'Cinzel', serif;
+          font-size: 1.6rem;
+          color: #5d4037;
+          margin-bottom: 1rem;
+          line-height: 1.3;
+          border-bottom: 1px solid #d3c7b1;
+          padding-bottom: 0.5rem;
+        }
+        
+        /* Event description with vintage font */
+        .timeline-event-description {
+          font-family: 'EB Garamond', serif;
+          color: #3e2723;
+          line-height: 1.7;
+          margin-bottom: 0.5rem;
+          font-size: 1.2rem;
+        }
+        
+        /* Timeline markers with vintage styling */
+        .timeline-marker {
+          position: absolute;
+          left: 50%;
+          top: 20px;
+          width: 20px;
+          height: 20px;
+          background-color: #f8f3e6;
+          border: 3px solid #5d4037;
+          border-radius: 50%;
+          transform: translateX(-50%);
+          z-index: 10;
+          box-shadow: 0 0 0 3px rgba(93, 64, 55, 0.3);
+        }
+        
+        /* Position markers for odd and even events */
+        .timeline-event:nth-child(odd) .timeline-marker {
+          left: calc(100% + 40px);
+        }
+        
+        .timeline-event:nth-child(even) .timeline-marker {
+          left: -40px;
+        }
+        
+        /* Marker inner dot */
+        .timeline-marker::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 6px;
+          height: 6px;
+          background-color: #5d4037;
+          border-radius: 50%;
+        }
+        
+        /* Key event styling with vintage emphasis */
+        .key-event .timeline-event-content {
+          background-color: #fff8e1;
+          border: 1px solid #d3c7b1;
+          border-left: 5px solid #8d6e63;
+        }
+        
+        .key-event .timeline-marker {
+          width: 26px;
+          height: 26px;
+          border-width: 4px;
+          background-color: #fff8e1;
+        }
+        
+        .key-event .timeline-event-title {
+          color: #3e2723;
+        }
+        
+        /* Category colors with vintage palette */
+        .timeline-category-political .timeline-date {
+          background-color: #1a237e;
+          border-color: #0d1642;
+        }
+        
+        .timeline-category-political .timeline-marker {
+          border-color: #1a237e;
+          box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.3);
+        }
+        
+        .timeline-category-political .timeline-marker::after {
+          background-color: #1a237e;
+        }
+        
+        .timeline-category-cultural .timeline-date {
+          background-color: #4a148c;
+          border-color: #2a0b50;
+        }
+        
+        .timeline-category-cultural .timeline-marker {
+          border-color: #4a148c;
+          box-shadow: 0 0 0 3px rgba(74, 20, 140, 0.3);
+        }
+        
+        .timeline-category-cultural .timeline-marker::after {
+          background-color: #4a148c;
+        }
+        
+        .timeline-category-scientific .timeline-date {
+          background-color: #1b5e20;
+          border-color: #0d3311;
+        }
+        
+        .timeline-category-scientific .timeline-marker {
+          border-color: #1b5e20;
+          box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.3);
+        }
+        
+        .timeline-category-scientific .timeline-marker::after {
+          background-color: #1b5e20;
+        }
+        
+        /* Image placeholders with vintage frame */
+        .timeline-image {
+          width: 100%;
+          height: 180px;
+          background-color: #e8e0d0;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #8d6e63;
+          font-style: italic;
+          font-size: 1rem;
+          border: 1px solid #d3c7b1;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        /* Image frame effect */
+        .timeline-image::before {
+          content: '';
+          position: absolute;
+          top: 5px;
+          left: 5px;
+          right: 5px;
+          bottom: 5px;
+          border: 1px solid rgba(141, 110, 99, 0.3);
+          z-index: 1;
+        }
+        
+        /* References with vintage styling */
+        .timeline-reference {
+          font-size: 0.9rem;
+          color: #795548;
+          font-style: italic;
+          margin-top: 1rem;
+          border-top: 1px dotted #d3c7b1;
+          padding-top: 0.5rem;
+          font-family: 'EB Garamond', serif;
+        }
+        
+        /* Context boxes with vintage paper look */
+        .timeline-context {
+          font-size: 1rem;
+          color: #5d4037;
+          background-color: #f1ece4;
+          padding: 1rem;
+          margin-top: 1rem;
+          border-left: 3px solid #8d6e63;
+          font-family: 'EB Garamond', serif;
+          font-style: italic;
+          position: relative;
+        }
+        
+        /* Add vintage texture to context boxes */
+        .timeline-context::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d3c7b1' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 5v1H5z'/%3E%3C/g%3E%3C/svg%3E");
+          z-index: -1;
+        }
+        
+        /* Legend with vintage styling */
+        .timeline-legend {
+          display: flex;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 1.5rem;
+          margin: 3rem 0 1rem;
+          padding: 1.5rem;
+          background-color: #e8e0d0;
+          border: 1px solid #d3c7b1;
+          position: relative;
+        }
+        
+        /* Add vintage texture to legend */
+        .timeline-legend::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d3c7b1' fill-opacity='0.2' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 5v1H5z'/%3E%3C/g%3E%3C/svg%3E");
+          z-index: -1;
+        }
+        
+        .timeline-legend-item {
+          display: flex;
+          align-items: center;
+          position: relative;
+          z-index: 1;
+        }
+        
+        .timeline-legend-color {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          margin-right: 10px;
+          border: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .timeline-legend-label {
+          font-size: 1rem;
+          color: #5d4037;
+          font-family: 'EB Garamond', serif;
+        }
+        
+        .timeline-legend-color-default {
+          background-color: #5d4037;
+        }
+        
+        .timeline-legend-color-political {
+          background-color: #1a237e;
+        }
+        
+        .timeline-legend-color-cultural {
+          background-color: #4a148c;
+        }
+        
+        .timeline-legend-color-scientific {
+          background-color: #1b5e20;
+        }
+        
+        /* Navigation with vintage buttons */
+        .timeline-navigation {
+          display: flex;
+          justify-content: space-between;
+          margin: 3rem 0 1rem;
+          padding: 0 2rem;
+          position: relative;
+          z-index: 1;
+        }
+        
+        .timeline-nav-button {
+          background-color: #5d4037;
+          color: #f8f3e6;
+          border: 1px solid #3e2723;
+          padding: 0.8rem 1.5rem;
+          font-family: 'Cinzel', serif;
+          font-weight: bold;
+          font-size: 1rem;
+          cursor: pointer;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+          transition: all 0.2s ease;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        
+        .timeline-nav-button:hover {
+          background-color: #3e2723;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        /* Footer with vintage styling */
+        .timeline-footer {
+          text-align: center;
+          margin-top: 3rem;
+          padding: 2rem;
+          border-top: 1px solid #d3c7b1;
+          color: #795548;
+          font-size: 1rem;
+          font-family: 'EB Garamond', serif;
+          font-style: italic;
+          background-color: #e8e0d0;
+          position: relative;
+        }
+        
+        /* Add vintage texture to footer */
+        .timeline-footer::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d3c7b1' fill-opacity='0.2' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 5v1H5z'/%3E%3C/g%3E%3C/svg%3E");
+          z-index: -1;
+        }
+        
+        /* Decorative elements */
+        .timeline-decoration {
+          position: absolute;
+          width: 40px;
+          height: 40px;
+          background-repeat: no-repeat;
+          background-size: contain;
+          opacity: 0.6;
+          z-index: 2;
+        }
+        
+        .decoration-1 {
+          top: 100px;
+          left: 50px;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%238d6e63' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cpath d='M12 6v6l4 2'%3E%3C/path%3E%3C/svg%3E");
+        }
+        
+        .decoration-2 {
+          top: 100px;
+          right: 50px;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%238d6e63' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12h18M3 6h18M3 18h18'%3E%3C/path%3E%3C/svg%3E");
+        }
+        
+        /* Wax seal */
+        .wax-seal {
+          position: absolute;
+          bottom: 30px;
+          right: 40px;
+          width: 60px;
+          height: 60px;
+          background-color: #8d6e63;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #f8f3e6;
+          font-family: 'Cinzel', serif;
+          font-size: 1.2rem;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+          transform: rotate(5deg);
+          z-index: 10;
+        }
+        
+        .wax-seal::before {
+          content: '';
+          position: absolute;
+          top: 5px;
+          left: 5px;
+          right: 5px;
+          bottom: 5px;
+          border: 1px solid rgba(248, 243, 230, 0.5);
+          border-radius: 50%;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+          .timeline-event {
+            width: 80%;
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
+          
+          .timeline-line {
+            left: 30px;
+          }
+          
+          .timeline-marker {
+            left: 30px;
+          }
+          
+          .timeline-event-content::after {
+            display: none;
+          }
+        }
+        
+        @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cinzel+Decorative:wght@400;700;900&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap");
+      `
+    },
+    medieval: {
+      description: "medieval manuscript with ornate decorations and calligraphy",
+      emphasis: "Create an ancient manuscript look with ornate decorations, illuminated capitals, and calligraphy.",
+      colors: ["#8B4513", "#CD853F", "#A0522D", "#D2B48C", "#800000", "#DAA520"],
+      specialInstructions: `
+        Create a medieval manuscript style document with ornate decorations and calligraphy.
+        - Use decorative borders and illuminated capitals at the beginning of sections
+        - Include ornate dividers between sections
+        - Use a formal, calligraphic font style throughout
+        - Add decorative drop caps for the first letter of key paragraphs
+        - Include medieval-style illustrations and decorative elements
+        - Use a parchment-like background texture
+        - Create the appearance of aged, weathered paper
+        - Add decorative headers and footers
+        - Use rich, deep colors typical of medieval manuscripts
+      `,
+      customCSS: `
+        body {
+          background-color: #f5f1e6;
+          background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23d1c8b7' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
+          font-family: "EB Garamond", serif;
+          padding: 2rem;
+          color: #3d2c12;
+        }
+        .note-paper {          background-color: #fff;
+          border-radius: 12px;
+          box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+          padding: 3rem;
+          max-width: 1200px;
+          margin: 0 auto;
+          position: relative;
+          display: block;
+        }
+        .timeline-header {
+          text-align: center;
+          margin-bottom: 3rem;
+        }
+        .timeline-title {
+          font-family: 'Playfair Display', serif;
+          font-size: 2.8rem;
+          color: #2d3748;
+          margin-bottom: 1rem;
+          position: relative;
+          display: inline-block;
+        }
+        .timeline-title::after {
+          content: '';
+          position: absolute;
+          bottom: -10px;
+          left: 10%;
+          right: 10%;
+          height: 3px;
+          background: linear-gradient(90deg, transparent, #e67e22, transparent);
+        }
+        .timeline-subtitle {
+          font-family: 'Merriweather', serif;
+          font-size: 1.2rem;
+          color: #718096;
+          font-style: italic;
+        }
+        .timeline-container {
+          position: relative;
+          margin: 4rem 0;
+          padding-bottom: 2rem;
+        }
+        .timeline-line {
+          position: absolute;
+          left: 50%;
+          top: 0;
+          bottom: 0;
+          width: 6px;
+          background: linear-gradient(to bottom, #f39c12, #e67e22, #d35400);
+          transform: translateX(-50%);
+          border-radius: 3px;
+          z-index: 1;
+        }
+        .timeline-era {
+          position: relative;
+          margin: 5rem 0;
+          text-align: center;
+          z-index: 10;
+        }
+        .timeline-era-marker {
+          display: inline-block;
+          background: linear-gradient(135deg, #f39c12, #e67e22);
+          color: white;
+          padding: 0.8rem 2rem;
+          border-radius: 30px;
+          font-weight: bold;
+          font-size: 1.2rem;
+          box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+          position: relative;
+          z-index: 10;
+        }
+        .timeline-event {
+          position: relative;
+          margin-bottom: 4rem;
+          width: 43%;
+          padding: 0;
+          z-index: 5;
+        }
+        .timeline-event:nth-child(odd) {
+          margin-left: auto;
+          margin-right: 7%;
+        }
+        .timeline-event:nth-child(even) {
+          margin-right: auto;
+          margin-left: 7%;
+        }
+        .timeline-event-content {
+          background-color: #fff;
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+          padding: 1.5rem;
+          position: relative;
+          transition: transform 0.3s ease;
+        }
+        .timeline-event-content:hover {
+          transform: translateY(-5px);
+        }
+        .timeline-event:nth-child(odd) .timeline-event-content::before {
+          content: '';
+          position: absolute;
+          right: -15px;
+          top: 20px;
+          width: 15px;
+          height: 3px;
+          background: linear-gradient(90deg, #e67e22, transparent);
+        }
+        .timeline-event:nth-child(even) .timeline-event-content::before {
+          content: '';
+          position: absolute;
+          left: -15px;
+          top: 20px;
+          width: 15px;
+          height: 3px;
+          background: linear-gradient(90deg, transparent, #e67e22);
+        }
+        .timeline-date {
+          display: inline-block;
+          font-weight: bold;
+          color: white;
+          margin-bottom: 1rem;
+          font-size: 1rem;
+          background: linear-gradient(135deg, #e67e22, #d35400);
+          padding: 0.4rem 1rem;
+          border-radius: 20px;
+          box-shadow: 0 2px 8px rgba(230, 126, 34, 0.2);
+          position: relative;
+          top: -12px;
+        }
+        .timeline-event-title {
+          font-family: 'Playfair Display', serif;
+          font-size: 1.5rem;
+          color: #2d3748;
+          margin-bottom: 0.8rem;
+          line-height: 1.3;
+        }
+        .timeline-event-description {
+          color: #4a5568;
+          line-height: 1.6;
+          margin-bottom: 0.5rem;
+        }
+        .timeline-marker {
+          position: absolute;
+          left: 50%;
+          top: 20px;
+          width: 24px;
+          height: 24px;
+          background-color: #fff;
+          border: 4px solid #e67e22;
+          border-radius: 50%;
+          transform: translateX(-50%);
+          z-index: 10;
+          box-shadow: 0 0 0 4px rgba(230, 126, 34, 0.3);
+        }
+        .timeline-marker::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 8px;
+          height: 8px;
+          background-color: #e67e22;
+          border-radius: 50%;
+        }
+        .key-event .timeline-event-content {
+          background-color: #fff9f1;
+          border: 1px solid rgba(230, 126, 34, 0.2);
+          border-left: 5px solid #e67e22;
+        }
+        .key-event .timeline-marker {
+          width: 30px;
+          height: 30px;
+          border-width: 5px;
+          background-color: #fff9f1;
+        }
+        .key-event .timeline-event-title {
+          color: #c05621;
+        }
+        .timeline-category-political .timeline-date {
+          background: linear-gradient(135deg, #3182ce, #2b6cb0);
+        }
+        .timeline-category-political .timeline-marker {
+          border-color: #3182ce;
+          box-shadow: 0 0 0 4px rgba(49, 130, 206, 0.3);
+        }
+        .timeline-category-political .timeline-marker::after {
+          background-color: #3182ce;
+        }
+        .timeline-category-cultural .timeline-date {
+          background: linear-gradient(135deg, #805ad5, #6b46c1);
+        }
+        .timeline-category-cultural .timeline-marker {
+          border-color: #805ad5;
+          box-shadow: 0 0 0 4px rgba(128, 90, 213, 0.3);
+        }
+        .timeline-category-cultural .timeline-marker::after {
+          background-color: #805ad5;
+        }
+        .timeline-category-scientific .timeline-date {
+          background: linear-gradient(135deg, #38a169, #2f855a);
+        }
+        .timeline-category-scientific .timeline-marker {
+          border-color: #38a169;
+          box-shadow: 0 0 0 4px rgba(56, 161, 105, 0.3);
+        }
+        .timeline-category-scientific .timeline-marker::after {
+          background-color: #38a169;
+        }
+        .timeline-image {
+          width: 100%;
+          height: 150px;
+          background-color: #edf2f7;
+          border-radius: 8px;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #a0aec0;
+          font-style: italic;
+          font-size: 0.9rem;
+        }
+        .timeline-reference {
+          font-size: 0.8rem;
+          color: #718096;
+          font-style: italic;
+          margin-top: 1rem;
+          border-top: 1px dotted #e2e8f0;
+          padding-top: 0.5rem;
+        }
+        .timeline-context {
+          font-size: 0.9rem;
+          color: #718096;
+          background-color: #f7fafc;
+          border-radius: 6px;
+          padding: 0.8rem;
+          margin-top: 1rem;
+          border-left: 3px solid #cbd5e0;
+        }
+        .timeline-legend {
+          display: flex;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 1rem;
+          margin: 2rem 0;
+          padding: 1rem;
+          background-color: #f7fafc;
+          border-radius: 8px;
+        }
+        .timeline-legend-item {
+          display: flex;
+          align-items: center;
+          margin-right: 1.5rem;
+        }
+        .timeline-legend-color {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          margin-right: 8px;
+        }
+        .timeline-legend-label {
+          font-size: 0.9rem;
+          color: #4a5568;
+        }
+        .timeline-legend-color-default {
+          background: linear-gradient(135deg, #e67e22, #d35400);
+        }
+        .timeline-legend-color-political {
+          background: linear-gradient(135deg, #3182ce, #2b6cb0);
+        }
+        .timeline-legend-color-cultural {
+          background: linear-gradient(135deg, #805ad5, #6b46c1);
+        }
+        .timeline-legend-color-scientific {
+          background: linear-gradient(135deg, #38a169, #2f855a);
+        }
+        .timeline-navigation {
+          display: flex;
+          justify-content: space-between;
+          margin: 3rem 0 1rem;
+        }
+        .timeline-nav-button {
+          background: linear-gradient(135deg, #e67e22, #d35400);
+          color: white;
+          border: none;
+          padding: 0.6rem 1.2rem;
+          border-radius: 30px;
+          font-weight: bold;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(230, 126, 34, 0.3);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .timeline-nav-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
+        }
+        .timeline-footer {
+          text-align: center;
+          margin-top: 3rem;
+          padding-top: 1.5rem;
+          border-top: 2px solid #edf2f7;
+          color: #718096;
+          font-size: 0.9rem;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Merriweather:wght@300;400;700&display=swap');
+      `
+    },
+    comparison: {
+      description: 'side-by-side analysis and comparison charts',
+      emphasis: 'Use parallel columns and comparison tables to highlight differences and similarities.',
+      colors: ['#3498db', '#2980b9', '#e74c3c', '#c0392b', '#27ae60', '#f39c12'],
+      specialInstructions: `
+        Create a comparison-focused layout that highlights similarities and differences.
+        - Use side-by-side columns to compare different aspects, concepts, or entities
+        - Create comparison tables with clear headers and aligned rows
+        - Use visual cues like checkmarks, X marks, or rating systems to show comparisons
+        - Highlight advantages and disadvantages of each item being compared
+        - Include "versus" sections that directly contrast key points
+        - Use color coding to distinguish between the items being compared
+        - Create pro/con lists for different options or approaches
+        - Include summary sections that synthesize the key differences and similarities
+        - Use Venn diagrams or other visual elements to show overlapping characteristics
+      `,
+      customCSS: `
+        body {
+          background-color: #f8fafc;
+          background-image: none;
+          font-family: 'Open Sans', sans-serif;
+          padding: 2rem;
+        }
+        .note-paper {
+          background-color: #fff;
+          border-radius: 8px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+          padding: 2rem;
+        }
+        .comparison-container {
+          display: flex;
+          gap: 2rem;
+          margin: 2rem 0;
+        }
+        .comparison-column {
+          flex: 1;
+          padding: 1.5rem;
+          border-radius: 8px;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        .column-a {
+          background-color: #ebf5fb;
+          border-top: 5px solid #3498db;
+        }
+        .column-b {
+          background-color: #fdedec;
+          border-top: 5px solid #e74c3c;
+        }
+        .comparison-header {
+          text-align: center;
+          font-size: 1.5rem;
+          font-weight: bold;
+          margin-bottom: 1rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 2px solid rgba(0,0,0,0.1);
+        }
+        .column-a .comparison-header {
+          color: #3498db;
+        }
+        .column-b .comparison-header {
+          color: #e74c3c;
+        }
+        .comparison-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 1.5rem 0;
+        }
+        .comparison-table th {
+          background-color: #f2f2f2;
+          padding: 0.8rem;
+          text-align: left;
+          border: 1px solid #ddd;
+        }
+        .comparison-table td {
+          padding: 0.8rem;
+          border: 1px solid #ddd;
+        }
+        .check {
+          color: #27ae60;
+          font-weight: bold;
+        }
+        .x-mark {
+          color: #e74c3c;
+          font-weight: bold;
+        }
+        .versus {
+          display: flex;
+          align-items: center;
+          margin: 1.5rem 0;
+        }
+        .versus-item {
+          flex: 1;
+          padding: 1rem;
+          text-align: center;
+        }
+        .versus-divider {
+          font-size: 1.5rem;
+          font-weight: bold;
+          padding: 0 1rem;
+        }
+        .pro-con-list {
+          margin: 1rem 0;
+        }
+        .pro-item {
+          color: #27ae60;
+          margin-bottom: 0.5rem;
+        }
+        .con-item {
+          color: #e74c3c;
+          margin-bottom: 0.5rem;
+        }
+      `
+    },
+    notebook: {
+      description: 'traditional lined paper with handwritten aesthetics',
+      emphasis: 'Mimic classic notebook paper with ruled lines and natural handwriting flow.',
+      colors: ['#2c3e50', '#34495e', '#7f8c8d', '#95a5a6', '#bdc3c7', '#ecf0f1'],
+      specialInstructions: `
+        Create a photorealistic spiral-bound notebook page that looks exactly like a physical notebook.
+        - Use precise blue horizontal ruled lines with a red vertical margin line exactly like real notebook paper
+        - Include a highly detailed spiral binding on the left side with realistic metal coils and punched holes
+        - Use exclusively handwriting-style fonts that look like genuine handwritten notes with pen pressure variations
+        - Add margin notes, arrows, and annotations in different colored "pens" (blue, black, red)
+        - Create a natural, slightly messy layout with varied handwriting styles and occasional mistakes
+        - Include realistic pen effects like underlines, circles, stars, arrows, and crossed-out text
+        - Add authentic notebook elements like coffee stains, fingerprints, torn edges, and dog-eared corners
+        - Use highlighting, different colored pens, and pencil marks for emphasis and corrections
+        - Include small doodles, sketches, and scribbles in the margins that look hand-drawn
+        - Add realistic paper texture with subtle fiber patterns and slight discoloration
+        - Create 3D effects with shadows and lighting to make it look like a physical notebook page
+        - Include authentic elements like page numbers, dates, class/subject headers, and teacher's marks
+        - Add realistic wear and tear like wrinkles, smudges, and slight water damage
+        - Make the entire page look like a photograph of a real spiral notebook page on a desk
+        - Include subtle background elements like a desk surface or other school supplies partially visible
+      `,
+      customCSS: `
+        /* Reset grid layout for notebook */
+        .note-paper {
+          display: block !important;
+          grid-template-columns: none !important;
+          grid-auto-rows: auto !important;
+          grid-auto-flow: row !important;
+          gap: 0 !important;
+          background-color: transparent !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+          max-width: 900px !important;
+          margin: 0 auto !important;
+          position: relative !important;
+          overflow: visible !important;
+        }
+        
+        body {
+          background-color: #e8e6e1;
+          background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23d1c8b7' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
+          font-family: 'Caveat', cursive;
+          padding: 2rem;
+          perspective: 1000px;
+        }
+        
+        /* Desk surface under the notebook */
+        body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h100v100H0z' fill='%23855E42'/%3E%3Cpath d='M0 0h50v50H0z' fill='%23704D35'/%3E%3Cpath d='M50 50h50v50H50z' fill='%23704D35'/%3E%3C/svg%3E");
+          background-size: 300px 300px;
+          opacity: 0.1;
+          z-index: -2;
+        }
+        .note-paper {
+          background-color: #fffdf8;
+          background-image: 
+            linear-gradient(90deg, transparent 39px, #db4437 39px, #db4437 41px, transparent 41px),
+            linear-gradient(#e5e5e5 0.1em, transparent 0.1em);
+          background-size: 100% 1.5em;
+          border-radius: 5px;
+          box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+          padding: 2rem 2rem 2rem 60px;
+          position: relative;
+          max-width: 1000px;
+          margin: 0 auto;
+          overflow: visible;
+          border: 1px solid #e0ddd3;
+        }
+        .notebook-header {
+          text-align: center;
+          margin-bottom: 2rem;
+          position: relative;
+        }
+        .notebook-title {
+          font-family: 'Caveat', cursive;
+          font-size: 3rem;
+          font-weight: 700;
+          color: #2c3e50;
+          margin-bottom: 0.5rem;
+          text-decoration: none;
+          position: relative;
+          display: inline-block;
+        }
+        .notebook-title::after {
+          content: '';
+          position: absolute;
+          bottom: -5px;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: #3498db;
+          transform: rotate(-0.5deg);
+        }
+        .notebook-subtitle {
+          font-family: 'Caveat', cursive;
+          font-size: 1.5rem;
+          color: #7f8c8d;
+          font-style: italic;
+        }
+        .notebook-date {
+          position: absolute;
+          top: 10px;
+          right: 20px;
+          font-family: 'Caveat', cursive;
+          font-size: 1.2rem;
+          color: #7f8c8d;
+          transform: rotate(2deg);
+        }
+        .dog-ear {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 0;
+          height: 0;
+          border-style: solid;
+          border-width: 0 60px 60px 0;
+          border-color: transparent #e5e5e5 transparent transparent;
+          box-shadow: -2px 2px 5px rgba(0,0,0,0.1);
+          z-index: 5;
+        }
+        .dog-ear::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: -60px;
+          width: 30px;
+          height: 30px;
+          background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.05) 50%);
+        }
+        .paper-clip {
+          position: absolute;
+          top: -15px;
+          left: 30px;
+          width: 35px;
+          height: 70px;
+          border: 3px solid #95a5a6;
+          border-radius: 5px 5px 0 0;
+          border-bottom: none;
+          transform: rotate(-10deg);
+          z-index: 10;
+          box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        .paper-clip:after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 7px;
+          width: 15px;
+          height: 40px;
+          border: 3px solid #95a5a6;
+          border-radius: 5px 5px 0 0;
+          border-bottom: none;
+        }
+        .margin-note {
+          position: absolute;
+          left: -35px;
+          font-size: 1rem;
+          color: #e74c3c;
+          transform: rotate(-5deg);
+          max-width: 100px;
+          font-family: 'Indie Flower', cursive;
+          line-height: 1.2;
+          z-index: 10;
+        }
+        .margin-note::after {
+          content: '';
+          position: absolute;
+          bottom: -5px;
+          right: -10px;
+          width: 30px;
+          height: 1px;
+          background: #e74c3c;
+          transform: rotate(-45deg);
+        }
+        .highlight {
+          background-color: rgba(255, 255, 0, 0.35);
+          padding: 0 2px;
+          border-radius: 3px;
+          position: relative;
+        }
+        .highlight::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: rgba(241, 196, 15, 0.5);
+        }
+        .pen-underline {
+          text-decoration: none;
+          position: relative;
+          z-index: 1;
+        }
+        .pen-underline::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          height: 2px;
+          background-image: url("data:image/svg+xml,%3Csvg width='100' height='3' viewBox='0 0 100 3' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 1.5c5 0 5-1 10-1s5 1 10 1 5-1 10-1 5 1 10 1 5-1 10-1 5 1 10 1 5-1 10-1 5 1 10 1 5-1 10-1 5 1 10 1 5-1 10-1' stroke='%233498db' fill='none' stroke-width='1'/%3E%3C/svg%3E");
+          background-position: bottom;
+          background-repeat: repeat-x;
+          background-size: 20% 100%;
+          padding-bottom: 2px;
+          z-index: -1;
+        }
+        .pen-circle {
+          position: relative;
+          display: inline-block;
+        }
+        .pen-circle::after {
+          content: '';
+          position: absolute;
+          top: -5px;
+          left: -8px;
+          right: -8px;
+          bottom: -3px;
+          border: 2px solid #e74c3c;
+          border-radius: 50%;
+          z-index: -1;
+        }
+        .doodle {
+          position: absolute;
+          font-size: 1.5rem;
+          opacity: 0.7;
+          transform: rotate(10deg);
+          color: #7f8c8d;
+          z-index: 5;
+        }
+        .doodle-star {
+          position: absolute;
+          width: 30px;
+          height: 30px;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237f8c8d' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'%3E%3C/polygon%3E%3C/svg%3E");
+          background-size: contain;
+          background-repeat: no-repeat;
+          opacity: 0.6;
+          transform: rotate(15deg);
+        }
+        .doodle-arrow {
+          position: absolute;
+          width: 40px;
+          height: 20px;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237f8c8d' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3Cpolyline points='12 5 19 12 12 19'%3E%3C/polyline%3E%3C/svg%3E");
+          background-size: contain;
+          background-repeat: no-repeat;
+          opacity: 0.6;
+        }
+        .coffee-stain {
+          position: absolute;
+          width: 80px;
+          height: 80px;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23c0392b' fill-opacity='0.1'/%3E%3C/svg%3E");
+          background-size: contain;
+          background-repeat: no-repeat;
+          z-index: 1;
+          opacity: 0.4;
+          transform: rotate(15deg);
+        }
+        h1 {
+          font-family: 'Caveat', cursive;
+          font-size: 2.8rem;
+          font-weight: 700;
+          color: #2c3e50;
+          text-align: center;
+          margin-bottom: 1.5rem;
+          position: relative;
+          display: inline-block;
+          transform: rotate(-1deg);
+        }
+        h1::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: #3498db;
+          border-radius: 1.5px;
+        }
+        h2 {
+          font-family: 'Caveat', cursive;
+          font-size: 2rem;
+          font-weight: 700;
+          color: #2c3e50;
+          margin-top: 2.5rem;
+          margin-bottom: 1rem;
+          position: relative;
+          display: inline-block;
+        }
+        h2::before {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: -20px;
+          width: 10px;
+          height: 10px;
+          background: #e74c3c;
+          border-radius: 50%;
+          transform: translateY(-50%);
+        }
+        h3 {
+          font-family: 'Caveat', cursive;
+          font-size: 1.6rem;
+          font-weight: 700;
+          color: #34495e;
+          margin-top: 1.5rem;
+          margin-bottom: 0.8rem;
+          text-decoration: underline;
+          text-decoration-color: #95a5a6;
+          text-decoration-thickness: 1px;
+          text-underline-offset: 5px;
+        }
+        p, li {
+          font-family: 'Caveat', cursive;
+          font-size: 1.4rem;
+          line-height: 1.6;
+          color: #2c3e50;
+          margin-bottom: 1rem;
+        }
+        ul {
+          list-style-type: none;
+          padding-left: 1.5rem;
+        }
+        ul li {
+          position: relative;
+          margin-bottom: 0.8rem;
+        }
+        ul li::before {
+          content: '•';
+          position: absolute;
+          left: -1.2rem;
+          color: #3498db;
+          font-size: 1.5rem;
+        }
+        ol {
+          list-style-type: none;
+          counter-reset: item;
+          padding-left: 1.5rem;
+        }
+        ol li {
+          position: relative;
+          margin-bottom: 0.8rem;
+          counter-increment: item;
+        }
+        ol li::before {
+          content: counter(item) '.';
+          position: absolute;
+          left: -1.5rem;
+          color: #3498db;
+          font-weight: bold;
+        }
+        .important-note {
+          position: relative;
+          padding: 1rem;
+          margin: 1.5rem 0;
+          border: 2px solid #e74c3c;
+          border-radius: 5px;
+        }
+        .important-note::before {
+          content: 'IMPORTANT!';
+          position: absolute;
+          top: -12px;
+          left: 10px;
+          background: #fffdf8;
+          padding: 0 10px;
+          color: #e74c3c;
+          font-weight: bold;
+          font-size: 1.2rem;
+        }
+        .side-note {
+          font-family: 'Indie Flower', cursive;
+          font-size: 1.1rem;
+          color: #7f8c8d;
+          transform: rotate(-1deg);
+          padding: 0.8rem;
+          background-color: rgba(255, 255, 0, 0.15);
+          border: 1px solid rgba(0,0,0,0.05);
+          border-radius: 5px;
+          display: inline-block;
+          margin: 1rem 0;
+          box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+        }
+        .notebook-footer {
+          text-align: center;
+          margin-top: 3rem;
+          font-family: 'Caveat', cursive;
+          font-size: 1.2rem;
+          color: #95a5a6;
+          border-top: 1px dashed #bdc3c7;
+          padding-top: 1rem;
+        }
+        .page-number {
+          position: absolute;
+          bottom: 10px;
+          right: 20px;
+          font-family: 'Caveat', cursive;
+          font-size: 1.2rem;
+          color: #95a5a6;
+        }
+        .notebook-binding {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 41px;
+          width: 20px;
+          background-image: 
+            radial-gradient(circle at 10px 15px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 45px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 75px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 105px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 135px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 165px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 195px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 225px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 255px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 285px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 315px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 345px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 375px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 405px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 435px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 465px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 495px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 525px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 555px, #95a5a6 2px, transparent 2px),
+            radial-gradient(circle at 10px 585px, #95a5a6 2px, transparent 2px);
+          background-repeat: repeat-y;
+          background-size: 20px 30px;
+          z-index: 5;
+        }
+        .tape {
+          position: absolute;
+          width: 100px;
+          height: 30px;
+          background-color: rgba(255, 255, 255, 0.6);
+          opacity: 0.7;
+          transform: rotate(-5deg);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          z-index: 10;
+        }
+        .tape::before, .tape::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 2px;
+          background-image: linear-gradient(to bottom, transparent, rgba(0,0,0,0.1), transparent);
+        }
+        .tape::before {
+          left: 10px;
+        }
+        .tape::after {
+          right: 10px;
+        }
+        .tape-top-left {
+          top: -15px;
+          left: 20px;
+          transform: rotate(-10deg);
+        }
+        .tape-top-right {
+          top: -15px;
+          right: 60px;
+          transform: rotate(5deg);
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;700&family=Indie+Flower&display=swap');
+      `
+    }
+  };
+
+  const selectedTemplate = templateStyles[template as keyof typeof templateStyles] || templateStyles.creative;
+
+  // Base CSS with template-specific customizations
+  const baseCSS = `
+    /* In the <style> tag */
+    @import urlimport { code } from 'framer-motion/client';
+import { only } from 'node:test';
+import { a } from 'framer-motion/client';
+import { it } from 'node:test';
+import { a } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import { output } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import page from '@/app/page';
+import page from '@/app/page';
+import page from '@/app/page';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import style from 'styled-jsx/style';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { a } from 'framer-motion/client';
+import { line } from 'framer-motion/client';
+import { li } from 'framer-motion/client';
+import { p } from 'framer-motion/client';
+import { p } from 'framer-motion/client';
+import { type } from 'os';
+import style from 'styled-jsx/style';
+import { ul } from 'framer-motion/client';
+import { m } from 'framer-motion';
+import { position } from 'html2canvas/dist/types/css/property-descriptors/position';
+import { rgba } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { mark } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { section } from 'framer-motion/client';
+import { h2 } from 'framer-motion/client';
+import { text } from 'stream/consumers';
+import { h1 } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { relative } from 'path';
+import { text } from 'stream/consumers';
+import { px } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { circle } from 'framer-motion/client';
+import { m } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { m } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { text } from 'stream/consumers';
+import { relative } from 'path';
+import style from 'styled-jsx/style';
+import { px } from 'framer-motion';
+import { relative } from 'path';
+import { px } from 'framer-motion';
+import { relative } from 'path';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import style from 'styled-jsx/style';
+import { text } from 'stream/consumers';
+import page from '@/app/page';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { header } from 'framer-motion/client';
+import page from '@/app/page';
+import page from '@/app/page';
+import { after } from 'node:test';
+import page from '@/app/page';
+import { relative } from 'path';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import image from 'next/image';
+import { color } from 'framer-motion';
+import { body } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { rgba } from 'framer-motion';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { before } from 'node:test';
+import { before } from 'node:test';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { number } from 'framer-motion';
+import page from '@/app/page';
+import { px } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { footer } from 'framer-motion/client';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { relative } from 'path';
+import { before } from 'node:test';
+import { ol } from 'framer-motion/client';
+import { relative } from 'path';
+import { li } from 'framer-motion/client';
+import { ol } from 'framer-motion/client';
+import { reset } from 'canvas-confetti';
+import { type } from 'os';
+import style from 'styled-jsx/style';
+import { ol } from 'framer-motion/client';
+import { before } from 'node:test';
+import { ul } from 'framer-motion/client';
+import { relative } from 'path';
+import { li } from 'framer-motion/client';
+import { ul } from 'framer-motion/client';
+import { type } from 'os';
+import style from 'styled-jsx/style';
+import { ul } from 'framer-motion/client';
+import { line } from 'framer-motion/client';
+import { li } from 'framer-motion/client';
+import { p } from 'framer-motion/client';
+import { p } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { px } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { color } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { text } from 'stream/consumers';
+import { h3 } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { relative } from 'path';
+import { h2 } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { relative } from 'path';
+import { text } from 'stream/consumers';
+import { h1 } from 'framer-motion/client';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { circle } from 'framer-motion/client';
+import { relative } from 'path';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { position } from 'html2canvas/dist/types/css/property-descriptors/position';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { relative } from 'path';
+import { text } from 'stream/consumers';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { relative } from 'path';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { line } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import style from 'styled-jsx/style';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import style from 'styled-jsx/style';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { title } from 'process';
+import { relative } from 'path';
+import { text } from 'stream/consumers';
+import { title } from 'process';
+import { relative } from 'path';
+import { text } from 'stream/consumers';
+import { header } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { relative } from 'path';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { before } from 'node:test';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { color } from 'framer-motion';
+import { body } from 'framer-motion/client';
+import { relative } from 'path';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { a } from 'framer-motion/client';
+import { subtle } from 'crypto';
+import { a } from 'framer-motion/client';
+import { on } from 'events';
+import page from '@/app/page';
+import { a } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import page from '@/app/page';
+import { headers } from 'next/headers';
+import { headers } from 'next/headers';
+import page from '@/app/page';
+import page from '@/app/page';
+import { a } from 'framer-motion/client';
+import { it } from 'node:test';
+import { subtle } from 'crypto';
+import { small } from 'framer-motion/client';
+import { text } from 'stream/consumers';
+import layout from '@/app/layout';
+import { a } from 'framer-motion/client';
+import style from 'styled-jsx/style';
+import { on } from 'events';
+import { a } from 'framer-motion/client';
+import { line } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import page from '@/app/page';
+import { a } from 'framer-motion/client';
+import { text } from 'stream/consumers';
+import { mark } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { td } from 'framer-motion/client';
+import { table } from 'console';
+import { px } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { color } from 'framer-motion';
+import { th } from 'framer-motion/client';
+import { table } from 'console';
+import { table } from 'console';
+import { header } from 'framer-motion/client';
+import { b } from 'framer-motion/client';
+import { header } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { header } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { b } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { a } from 'framer-motion/client';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import image from 'next/image';
+import { color } from 'framer-motion';
+import { body } from 'framer-motion/client';
+import { summary } from 'framer-motion/client';
+import { color } from 'framer-motion';
+import { X } from 'lucide-react';
+import { clear } from 'console';
+import layout from '@/app/layout';
+import { a } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { text } from 'stream/consumers';
+import { footer } from 'framer-motion/client';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { hover } from 'framer-motion';
+import { button } from 'framer-motion/client';
+import { nav } from 'framer-motion/client';
+import { s } from 'framer-motion/client';
+import { s } from 'framer-motion/client';
+import { transform } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { button } from 'framer-motion/client';
+import { nav } from 'framer-motion/client';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { color } from 'framer-motion';
+import { legend } from 'framer-motion/client';
+import { color } from 'framer-motion';
+import { legend } from 'framer-motion/client';
+import { color } from 'framer-motion';
+import { legend } from 'framer-motion/client';
+import { color } from 'framer-motion';
+import { legend } from 'framer-motion/client';
+import { label } from 'framer-motion/client';
+import { legend } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { legend } from 'framer-motion/client';
+import { legend } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { wrap } from 'module';
+import { wrap } from 'module';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { legend } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import style from 'styled-jsx/style';
+import style from 'styled-jsx/style';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { color } from 'framer-motion';
+import { after } from 'node:test';
+import { marker } from 'framer-motion/client';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { marker } from 'framer-motion/client';
+import { color } from 'framer-motion';
+import { after } from 'node:test';
+import { marker } from 'framer-motion/client';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { marker } from 'framer-motion/client';
+import { color } from 'framer-motion';
+import { after } from 'node:test';
+import { marker } from 'framer-motion/client';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { marker } from 'framer-motion/client';
+import { title } from 'process';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { marker } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { marker } from 'framer-motion/client';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { marker } from 'framer-motion/client';
+import { line } from 'framer-motion/client';
+import { line } from 'framer-motion/client';
+import { title } from 'process';
+import { px } from 'framer-motion';
+import { relative } from 'path';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { px } from 'framer-motion';
+import { hover } from 'framer-motion';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { s } from 'framer-motion/client';
+import { transform } from 'framer-motion';
+import { relative } from 'path';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { relative } from 'path';
+import { relative } from 'path';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { marker } from 'framer-motion/client';
+import { text } from 'stream/consumers';
+import { relative } from 'path';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { line } from 'framer-motion/client';
+import { relative } from 'path';
+import style from 'styled-jsx/style';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { title } from 'process';
+import { relative } from 'path';
+import { title } from 'process';
+import { text } from 'stream/consumers';
+import { header } from 'framer-motion/client';
+import { relative } from 'path';
+import { px } from 'framer-motion';
+import { rgba } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { only } from 'node:test';
+import { a } from 'framer-motion/client';
+import { it } from 'node:test';
+import { output } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import page from '@/app/page';
+import style from 'styled-jsx/style';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { a } from 'framer-motion/client';
+import { type } from 'os';
+import { ul } from 'framer-motion/client';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import { position } from 'html2canvas/dist/types/css/property-descriptors/position';
+import { mark } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { start } from 'repl';
+import { col } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { span } from 'framer-motion/client';
+import { col } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { section } from 'framer-motion/client';
+import { section } from 'framer-motion/client';
+import { h2 } from 'framer-motion/client';
+import { h1 } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { circle } from 'framer-motion/client';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import style from 'styled-jsx/style';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import style from 'styled-jsx/style';
+import page from '@/app/page';
+import { px } from 'framer-motion';
+import page from '@/app/page';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import page from '@/app/page';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { color } from 'framer-motion';
+import { body } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { before } from 'node:test';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { before } from 'node:test';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import page from '@/app/page';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { before } from 'node:test';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { before } from 'node:test';
+import { ol } from 'framer-motion/client';
+import { li } from 'framer-motion/client';
+import { ol } from 'framer-motion/client';
+import { reset } from 'canvas-confetti';
+import { type } from 'os';
+import { ol } from 'framer-motion/client';
+import { before } from 'node:test';
+import { before } from 'node:test';
+import { ul } from 'framer-motion/client';
+import { li } from 'framer-motion/client';
+import { ul } from 'framer-motion/client';
+import { type } from 'os';
+import { ul } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { h3 } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { before } from 'node:test';
+import { h2 } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { h1 } from 'framer-motion/client';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { circle } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { position } from 'html2canvas/dist/types/css/property-descriptors/position';
+import image from 'next/image';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import style from 'styled-jsx/style';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import style from 'styled-jsx/style';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { title } from 'process';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import { m } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { before } from 'node:test';
+import { before } from 'node:test';
+import { px } from 'framer-motion';
+import image from 'next/image';
+import { color } from 'framer-motion';
+import { body } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { a } from 'framer-motion/client';
+import { subtle } from 'crypto';
+import { a } from 'framer-motion/client';
+import { on } from 'events';
+import page from '@/app/page';
+import { a } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import page from '@/app/page';
+import { headers } from 'next/headers';
+import page from '@/app/page';
+import { a } from 'framer-motion/client';
+import { it } from 'node:test';
+import { subtle } from 'crypto';
+import { small } from 'framer-motion/client';
+import { text } from 'stream/consumers';
+import layout from '@/app/layout';
+import { a } from 'framer-motion/client';
+import { on } from 'events';
+import { a } from 'framer-motion/client';
+import { line } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import { a } from 'framer-motion/client';
+import page from '@/app/page';
+import { a } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { td } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { th } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import image from 'next/image';
+import { color } from 'framer-motion';
+import { body } from 'framer-motion/client';
+import { summary } from 'framer-motion/client';
+import { color } from 'framer-motion';
+import { clear } from 'console';
+import layout from '@/app/layout';
+import { a } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { hover } from 'framer-motion';
+import { button } from 'framer-motion/client';
+import { s } from 'framer-motion/client';
+import { s } from 'framer-motion/client';
+import { s } from 'framer-motion/client';
+import { s } from 'framer-motion/client';
+import { s } from 'framer-motion/client';
+import { transform } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { wrap } from 'module';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import style from 'styled-jsx/style';
+import style from 'styled-jsx/style';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { marker } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { color } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { marker } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { color } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { marker } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { marker } from 'framer-motion/client';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { before } from 'node:test';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { before } from 'node:test';
+import { before } from 'node:test';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { px } from 'framer-motion';
+import { hover } from 'framer-motion';
+import { content } from 'html2canvas/dist/types/css/property-descriptors/content';
+import { s } from 'framer-motion/client';
+import { s } from 'framer-motion/client';
+import { transform } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import style from 'styled-jsx/style';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { after } from 'node:test';
+import { after } from 'node:test';
+import { title } from 'process';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { px } from 'framer-motion';
+import { color } from 'framer-motion';
+import { color } from 'framer-motion';
+('https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Kalam:wght@300;400;700&family=Caveat&family=Noto+Serif:wght@400;700&family=Lora:wght@400;700&family=Quicksand:wght@400;700&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&display=swap');
+    body {
+        background-color: #f4f4f4;
+        background-image:
+            linear-gradient(rgba(0,0,0,0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.08) 1px, transparent 1px);
+        background-size: 25px 25px;
+        font-family: 'Kalam', cursive;
+        padding: 2rem;
+    }
+    .note-paper {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        padding: 2.5rem;
+        max-width: 1600px;  /* EVEN WIDER */
+        margin: auto;
+        margin-bottom: 2rem; /* Space between pages */
+        display: grid;
+        grid-template-columns: repeat(8, 1fr); /* 8 columns for wide layout */
+        grid-auto-rows: min-content;
+        grid-auto-flow: dense; /* IMPORTANT: This will help fill empty spaces */
+        gap: 1.25rem; /* Reduced gap for a tighter layout */
+        position: relative; /* For tape positioning */
+    }
+    .page-break {
+        break-after: page;
+        margin-bottom: 3rem;
+    }
+    .page-header {
+        grid-column: 1 / -1;
+        text-align: center;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(240,240,240,0.8));
+        border-radius: 15px;
+        font-family: 'Gochi Hand', cursive;
+        font-size: 1.2rem;
+        color: #666;
+        transform: rotate(-0.5deg);
+    }
+    .page-continue {
+        grid-column: 1 / -1;
+        text-align: center;
+        margin: 1rem 0;
+        font-family: 'Caveat', cursive;
+        font-size: 1.1rem;
+        color: #888;
+        font-style: italic;
+    }
+    .tape {
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%) rotate(-4deg);
+        width: 120px;
+        height: 25px;
+        background: rgba(255, 255, 0, 0.4);
+        border-left: 2px dotted rgba(0,0,0,0.1);
+        border-right: 2px dotted rgba(0,0,0,0.1);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        z-index: 20;
+    }
+    .sticky-note {
+        background-color: #fefabc;
+        padding: 1rem;
+        font-family: 'Caveat', cursive;
+        box-shadow: 3px 3px 7px rgba(0,0,0,0.1);
+        transform: rotate(4deg);
+        z-index: 10; /* Make sure it can overlap */
+        position: relative; /* For tape */
+    }
+    .key-fact {
+        background: #e8f4f8;
+        border-left: 5px solid #3498db;
+        padding: 1rem;
+        font-family: 'Caveat', cursive;
+        z-index: 5;
+        position: relative; /* For tape */
+    }
+    .quote {
+        border-left: 5px solid #e74c3c;
+        padding: 1rem;
+        font-style: italic;
+        color: #555;
+        z-index: 5;
+        position: relative; /* For tape */
+    }
+    .wavy-underline {
+        text-decoration: #e74c3c wavy underline;
+        text-underline-offset: 0.3em;
+        text-decoration-thickness: 0.1em;
+    }
+    .circle-text {
+        border: 3px solid #3498db;
+        border-radius: 50%;
+        padding: 0.5rem 1rem;
+        display: inline-block;
+        text-align: center;
+        transform: rotate(-5deg);
+        font-weight: bold;
+    }
+    .annotation {
+        font-family: 'Caveat', cursive;
+        font-size: 1rem;
+        color: #555;
+        position: relative;
+        top: -10px;
+        left: 10px;
+        transform: rotate(3deg);
+        background: #ffffff;
+        padding: 0.2rem;
+    }
+    .arrow {
+        width: 100px; /* Adjust size as needed */
+        height: auto;
+        stroke: #2c3e50;
+        stroke-width: 3;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        /* AI will add random rotation inline */
+    }
+    h1 {
+        font-family: 'Gochi Hand', cursive;
+        font-size: 3.5rem;
+        color: #2c3e50;
+        grid-column: 1 / -1;
+        text-align: center;
+        margin-bottom: 1rem;
+        transform: rotate(-1.5deg);
+    }
+    h2 {
+        font-family: 'Gochi Hand', cursive;
+        font-size: 2.2rem;
+        color: #e74c3c;
+        transform: rotate(1deg);
+        padding: 0.5rem 1rem;
+        display: inline-block;
+    }
+    /* Use this class for KEY sections that need emphasis */
+    .section {
+        padding: 1.5rem;
+        border-radius: 10px;
+        transform: rotate(calc( (RANDOM_INT(-10, 10) / 10) * 1deg));
+        z-index: 1;
+    }
+    /* Grid classes for the 8-column layout */
+    .col-span-1 { grid-column: span 1; }
+    .col-span-2 { grid-column: span 2; }
+    .col-span-3 { grid-column: span 3; }
+    .col-span-4 { grid-column: span 4; }
+    .col-span-5 { grid-column: span 5; }
+    .col-span-6 { grid-column: span 6; }
+    .col-span-7 { grid-column: span 7; }
+    .col-span-8 { grid-column: 1 / -1; }
+    .col-start-1 { grid-column-start: 1; }
+    .col-start-2 { grid-column-start: 2; }
+    .col-start-3 { grid-column-start: 3; }
+    .col-start-4 { grid-column-start: 4; }
+    .col-start-5 { grid-column-start: 5; }
+    .col-start-6 { grid-column-start: 6; }
+    .col-start-7 { grid-column-start: 7; }
+    .col-start-8 { grid-column-start: 8; }
+    .row-start-2 { grid-row-start: 2; }
+    .row-start-3 { grid-row-start: 3; }
+    .row-start-4 { grid-row-start: 4; }
+    .row-start-5 { grid-row-start: 5; }
+    .row-span-2 { grid-row: span 2; }
+    .row-span-3 { grid-row: span 3; }
+    .row-span-4 { grid-row: span 4; }
+    mark {
+        background: linear-gradient(180deg, rgba(255,255,255,0) 60%, #f9e79f 60%, #f9e79f 90%, rgba(255,255,255,0) 90%);
+        background-position: 0 0.1em;
+        background-repeat: repeat-x;
+        padding: 0;
+        color: inherit;
+    }
+    ul { list-style-type: '→ '; padding-left: 1.5rem; }
+    p, li { font-size: 1.1rem; line-height: 1.6; }
+    
+    /* Template-specific custom CSS */
+    ${selectedTemplate.customCSS || ''}
+  `;
+
+  return `
+    You are a master visual note-taker and graphic designer, using HTML and CSS as your medium. 
+    
+    **🎯 HIGHEST PRIORITY - FOLLOW THESE EXACTLY:**
+    1. **PRIMARY TOPIC:** "${topic}" - This is the MAIN subject. ALL content must be directly related to this topic. Do NOT deviate or add unrelated information.
+    2. **MANDATORY TEMPLATE:** ${selectedTemplate.description} - ${selectedTemplate.emphasis} This template style is NON-NEGOTIABLE and must be applied throughout.
+    3. **PAGES REQUIREMENT:** Create exactly ${numPages} page${numPages > 1 ? 's' : ''} of content. Each page must continue naturally from the previous page, building upon the information presented earlier.
+    
+    **TEMPLATE-SPECIFIC INSTRUCTIONS:**
+    ${selectedTemplate.specialInstructions}
+    
+    Your task is to generate a SINGLE, SELF-CONTAINED HTML document that creates beautiful visual notes specifically about: "${topic}" across ${numPages} page${numPages > 1 ? 's' : ''}.
+    
+    ${numPages > 1 ? `**MULTI-PAGE REQUIREMENTS:**
+    - Each page should be a separate section that flows naturally from the previous
+    - Use clear visual breaks between pages (like page breaks or distinct sections)
+    - Each page should build upon and reference content from previous pages
+    - Maintain consistent styling and theme across all pages
+    - Include navigation or flow indicators if helpful
+    - CRITICAL: Distribute content EVENLY across all ${numPages} pages - each page must be equally full and dense
+    - Each page should contain roughly ${Math.round((400 * numPages) / numPages)}-${Math.round((600 * numPages) / numPages)} words of content
+    - Fill every page completely with no sparse or empty areas
+    - Balance visual elements and content blocks equally across all pages
+    ` : ''}
+    
+    The final output must be a **dense, beautiful, information collage**. The goal is to present information in a visually engaging, compact, and layered manner, as if it were cut and pasted into a physical scrapbook.
+
+    **CRITICAL INSTRUCTIONS - FOLLOW THESE EXACTLY OR THE TASK WILL FAIL:**
+    1.  **HTML ONLY:** Your entire response MUST be only the HTML code. Start with \`<!DOCTYPE html>\` and end with \`</html>\`. NO MARKDOWN, NO EXPLANATIONS.
+    2.  **TOPIC ADHERENCE:** Every single piece of content must relate directly to "${topic}". Do not include generic examples or unrelated information.
+    3.  **TEMPLATE CONSISTENCY:** Apply the "${selectedTemplate.description}" style throughout. This is mandatory.
+    4.  **DENSE, LAYERED COLLAGE - NO EMPTY SPACE:** This is the most important rule. The final note MUST look completely full and dense with NO empty or sparse areas. The layout should be compact and interlocking. Use the 8-column grid and a mix of \`col-span\` and \`row-span\` classes to create a dynamic layout with items of different sizes and shapes. Some items should be tall (\`row-span-3\`, \`row-span-4\`), others short. Some wide, some narrow. Fill EVERY available space on each page. Use the \`.tape\` class to create a layered, scrapbook feel.
+    5.  **MAXIMUM CONTENT DENSITY:** Fill each page completely with rich, detailed content. Do NOT leave any section sparse or incomplete. Add more subsections, examples, details, and explanations to ensure full coverage of each page.
+    6.  **EVEN DISTRIBUTION:** Distribute content evenly across all pages. Each page should have roughly equal amounts of content and visual density. No page should be significantly lighter or heavier than others.
+    7.  **USE A VARIETY OF STYLES:** Do NOT wrap every single element in a colored box. Use a mix of styles: \`.section\` for main content, \`.sticky-note\` for callouts, \`.key-fact\` for small highlights, and \`.quote\` for citations. This variety is essential.
+    8.  **NO DIAGRAMS OR IMAGES:** Do NOT include any placeholders for diagrams or images. The ONLY exception is the specific, hand-drawn SVG arrow code provided below.
+    9.  **GENERATE RICH, ABUNDANT CONTENT:** Create at least 8-12 distinct sections of content per page, with detailed explanations, examples, and comprehensive coverage of "${topic}". Each page should be visually packed with information.
+    10. **USE DECORATIVE ELEMENTS:** You MUST include decorative elements on EVERY page. This is mandatory. Use a mix of:
+        - At least one hand-drawn arrow to connect ideas.
+        - At least one wavy underline on a key phrase.
+        - At least one circled piece of text.
+
+    **VISUAL STYLE GUIDE (REPLICATE THIS):**
+    -   **Main Container:** A wide, landscape-oriented \`<div class="note-paper">\`.
+    -   **Handwriting Fonts:** Use varied handwriting Google Fonts.
+    -   **Content Blocks:** Use a mix of \`.section\`, \`.sticky-note\`, \`.key-fact\`, and \`.quote\`.
+    -   **Tape:** Use \`<div class="tape"></div>\` on some elements to make them look "taped on."
+
+    **CSS TO USE:**
+    ${baseCSS}
+
+    **ADVANCED DECORATIVE ELEMENTS:**
+    - **Hand-Drawn Arrow (SVG):** To connect ideas, place this SVG inside a grid item. You MUST change the transform style to rotate it randomly (e.g., style="transform: rotate(-5deg);").
+      <svg class="arrow" viewBox="0 0 100 50">
+        <path d="M5,25 C25,10 75,10 95,25" stroke-dasharray="100" stroke-dashoffset="100">
+          <animate attributeName="stroke-dashoffset" from="100" to="0" dur="1s" fill="freeze" />
+        </path>
+        <path d="M85,15 L95,25 L85,35">
+            <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="0.8s" fill="freeze" />
+        </path>
+      </svg>
+    - **Wavy Underline:** Wrap any text with <span class="wavy-underline">... to apply a wavy underline.
+    - **Circled Text:** Wrap any text with <span class="circle-text">... to draw a circle around it.
+    - **Annotations:** Add small side notes with <span class="annotation">... next to a word or phrase.
+
+    Now, generate the complete, self-contained HTML document for the topic: "${topic}" with exactly ${numPages} page${numPages > 1 ? 's' : ''}.
+    
+    ${numPages > 1 ? `**📖 MULTI-PAGE STRUCTURE:**
+    - Create ${numPages} separate <div class="note-paper"> containers
+    - Each page should have a subtle page indicator (e.g., <div class="page-header">Page 1 of ${numPages}: [Page Title]</div>)
+    - Use <div class="page-continue">...continued from previous page...</div> at the start of pages 2+
+    - Each page should naturally continue the narrative/information from the previous page
+    - Reference earlier content when appropriate (e.g., "As mentioned on page 1...")
+    - Distribute content logically across pages (introduction → details → conclusion/examples)
+    - CRITICAL: Each page must be completely filled with content - no page should be sparse or less dense than others
+    - Balance the number of sections, sticky notes, key facts, and quotes evenly across all pages
+    - Each page should have 8-12 content blocks to ensure full coverage
+    ` : ''}
+    
+    **🚨 CRITICAL REMINDERS:**
+    - The topic "${topic}" must be the SOLE focus of all content
+    - The "${selectedTemplate.description}" template style must be applied consistently
+    - ${numPages > 1 ? `Create exactly ${numPages} pages with ${numPages * 500}-${numPages * 700} words total distributed EVENLY` : 'Create a wide, dense, 8-column information collage with 500-700 words'}
+    - MAXIMUM DENSITY: Fill every inch of every page with rich, detailed content
+    - EVEN DISTRIBUTION: Each page must have equal visual weight and content density
+    - You must use a mix of column spans, row spans, and different content blocks (\`.section\`, \`.sticky-note\`, \`.key-fact\`)
+    - Use the \`.tape\` element to create a layered scrapbook effect
+    - Use colored backgrounds **only where necessary for emphasis**
+    - **You must use arrows, wavy underlines, and circles**
+    - ALL content must be directly related to "${topic}" - no generic examples or unrelated information
+    ${numPages > 1 ? `- Each page must build upon and reference previous pages naturally` : ''}
+    - NO EMPTY SPACES: Every page should be completely filled with content blocks
+    `;
+}

@@ -1,0 +1,11 @@
+          .timeline-event-content::after {
+            display: none;
+          }
+        }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cinzel+Decorative:wght@400;700;900&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+      `
+        .note-paper {
+          background-color: #fff;
+          border-radius: 12px;
+          box-shadow: 0 8px 30px rgba(0,0,0,0.12);
