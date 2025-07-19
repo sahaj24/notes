@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import Link from 'next/link';
 import { PayPalSubscription } from '@/components/PayPalSubscription';
+import { CoinDisplay } from '@/components/CoinDisplay';
 
 // Extend window object for TypeScript
 declare global {
@@ -78,36 +79,58 @@ export default function PricingPage() {
     <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2 cursor-pointer group transition-all duration-200">
+          <Link
+            href="/"
+            className="flex items-center space-x-2 cursor-pointer group transition-all duration-200"
+          >
             <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
               <div className="w-4 h-4 bg-white rounded-sm"></div>
             </div>
             <span className="text-xl font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-200">Notopy</span>
           </Link>
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/features" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200">
+            <Link
+              href="/features"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
+            >
               Features
             </Link>
-            <Link href="/pricing" className="text-sm font-medium text-gray-900 relative">
+            <Link
+              href="/pricing"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-900"
+            >
               Pricing
               <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-black rounded-full"></div>
             </Link>
-            <Link href="/about" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200">
+            <Link
+              href="/about"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
+            >
               About
             </Link>
             <div className="flex items-center space-x-3">
               {user ? (
                 <>
-                  <Link href="/notes" className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95">
+                  {profile && <CoinDisplay className="mr-2" />}
+                  <Link
+                    href="/notes"
+                    className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
                     Create Note
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
+                  <Link
+                    href="/login"
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                  >
                     Sign In
                   </Link>
-                  <Link href="/signup" className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95">
+                  <Link
+                    href="/signup"
+                    className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
                     Get Started
                   </Link>
                 </>
@@ -115,14 +138,14 @@ export default function PricingPage() {
             </div>
           </nav>
           <div className="md:hidden">
-            <button 
+            <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 hover:bg-gray-100 rounded-md transition-colors duration-200"
             >
-              <svg 
-                className={`w-6 h-6 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className={`w-6 h-6 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`}
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 {mobileMenuOpen ? (
@@ -134,25 +157,37 @@ export default function PricingPage() {
             </button>
           </div>
         </div>
-        
+
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100">
             <div className="px-6 py-4 space-y-4">
-              <Link href="/features" className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200 py-2">
+              <Link
+                href="/features"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
+              >
                 Features
               </Link>
-              <Link href="/pricing" className="block w-full text-left text-sm font-medium text-gray-900 font-semibold py-2">
+              <Link
+                href="/pricing"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-900 font-semibold"
+              >
                 Pricing
               </Link>
-              <Link href="/about" className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200 py-2">
+              <Link
+                href="/about"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
+              >
                 About
               </Link>
               <div className="border-t border-gray-100 pt-4 mt-4">
                 {user ? (
-                  <Link href="/notes" className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 text-center">
-                    Create Note
-                  </Link>
+                  <>
+                    {profile && <div className="mb-4"><CoinDisplay showDetails={true} /></div>}
+                    <Link href="/notes" className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 text-center">
+                      Create Note
+                    </Link>
+                  </>
                 ) : (
                   <>
                     <Link href="/login" className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 py-2">
@@ -192,7 +227,11 @@ export default function PricingPage() {
             <div className="space-y-2 text-sm text-gray-600">
               <Link href="/features" className="block hover:text-gray-900 transition-colors duration-200">Features</Link>
               <Link href="/pricing" className="block hover:text-gray-900 transition-colors duration-200">Pricing</Link>
-              <Link href="/notes" className="block hover:text-gray-900 transition-colors duration-200">Try Now</Link>
+              {user ? (
+                <Link href="/notes" className="block hover:text-gray-900 transition-colors duration-200">Try Now</Link>
+              ) : (
+                <Link href="/login" className="block hover:text-gray-900 transition-colors duration-200">Sign in to try</Link>
+              )}
             </div>
           </div>
           <div>

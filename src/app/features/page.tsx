@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import Link from 'next/link';
+import { CoinDisplay } from '@/components/CoinDisplay';
 
 export default function FeaturesPage() {
   const { user } = useAuth();
@@ -22,36 +23,58 @@ export default function FeaturesPage() {
     <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2 cursor-pointer group transition-all duration-200">
+          <Link
+            href="/"
+            className="flex items-center space-x-2 cursor-pointer group transition-all duration-200"
+          >
             <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
               <div className="w-4 h-4 bg-white rounded-sm"></div>
             </div>
             <span className="text-xl font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-200">Notopy</span>
           </Link>
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/features" className="text-sm font-medium text-gray-900 relative">
+            <Link
+              href="/features"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-900"
+            >
               Features
               <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-black rounded-full"></div>
             </Link>
-            <Link href="/pricing" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200">
+            <Link
+              href="/pricing"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
+            >
               Pricing
             </Link>
-            <Link href="/about" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200">
+            <Link
+              href="/about"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
+            >
               About
             </Link>
             <div className="flex items-center space-x-3">
               {user ? (
                 <>
-                  <Link href="/notes" className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95">
+                  {profile && <CoinDisplay className="mr-2" />}
+                  <Link
+                    href="/notes"
+                    className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
                     Create Note
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
+                  <Link
+                    href="/login"
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                  >
                     Sign In
                   </Link>
-                  <Link href="/signup" className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95">
+                  <Link
+                    href="/signup"
+                    className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
                     Get Started
                   </Link>
                 </>
@@ -59,14 +82,14 @@ export default function FeaturesPage() {
             </div>
           </nav>
           <div className="md:hidden">
-            <button 
+            <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 hover:bg-gray-100 rounded-md transition-colors duration-200"
             >
-              <svg 
-                className={`w-6 h-6 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className={`w-6 h-6 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`}
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 {mobileMenuOpen ? (
@@ -78,31 +101,52 @@ export default function FeaturesPage() {
             </button>
           </div>
         </div>
-        
+
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100">
             <div className="px-6 py-4 space-y-4">
-              <Link href="/features" className="block w-full text-left text-sm font-medium text-gray-900 font-semibold py-2">
+              <Link
+                href="/features"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-900 font-semibold"
+              >
                 Features
               </Link>
-              <Link href="/pricing" className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200 py-2">
+              <Link
+                href="/pricing"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
+              >
                 Pricing
               </Link>
-              <Link href="/about" className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200 py-2">
+              <Link
+                href="/about"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
+              >
                 About
               </Link>
               <div className="border-t border-gray-100 pt-4 mt-4">
                 {user ? (
-                  <Link href="/notes" className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 text-center">
-                    Create Note
-                  </Link>
+                  <>
+                    {profile && <div className="mb-4"><CoinDisplay showDetails={true} /></div>}
+                    <Link
+                      href="/notes"
+                      className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 text-center"
+                    >
+                      Create Note
+                    </Link>
+                  </>
                 ) : (
                   <>
-                    <Link href="/login" className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 py-2">
+                    <Link
+                      href="/login"
+                      className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 py-2"
+                    >
                       Sign In
                     </Link>
-                    <Link href="/signup" className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 mt-2 text-center">
+                    <Link
+                      href="/signup"
+                      className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 mt-2 text-center"
+                    >
                       Get Started
                     </Link>
                   </>
@@ -136,7 +180,11 @@ export default function FeaturesPage() {
             <div className="space-y-2 text-sm text-gray-600">
               <Link href="/features" className="block hover:text-gray-900 transition-colors duration-200">Features</Link>
               <Link href="/pricing" className="block hover:text-gray-900 transition-colors duration-200">Pricing</Link>
-              <Link href="/notes" className="block hover:text-gray-900 transition-colors duration-200">Try Now</Link>
+              {user ? (
+                <Link href="/notes" className="block hover:text-gray-900 transition-colors duration-200">Try Now</Link>
+              ) : (
+                <Link href="/login" className="block hover:text-gray-900 transition-colors duration-200">Sign in to try</Link>
+              )}
             </div>
           </div>
           <div>
@@ -283,6 +331,11 @@ export default function FeaturesPage() {
                 icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
               },
               {
+                title: "Template Spaces",
+                description: "Our templates include intentional spaces for your personal notes and additions, making it easy to customize content after generation.",
+                icon: "M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"
+              },
+              {
                 title: "Instant Export",
                 description: "Download your notes as high-quality images or PDFs. Perfect for sharing or offline studying.",
                 icon: "M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
@@ -299,6 +352,20 @@ export default function FeaturesPage() {
                 </div>
                 <h3 className="text-xl font-medium text-gray-900 mb-3">{feature.title}</h3>
                 <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                {feature.title === "Template Spaces" && (
+                  <div className="mt-4 bg-blue-50 border border-blue-100 rounded-md p-3 text-sm text-blue-700">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <svg className="h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-2">
+                        <p>Add your own content in these spaces to personalize your notes!</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -493,9 +560,9 @@ export default function FeaturesPage() {
                 color: "bg-blue-500"
               },
               {
-                name: "Mind Map",
-                description: "Visual connections and hierarchical information structure",
-                icon: "🧠",
+                name: "Cheat Sheet",
+                description: "Densely packed study reference with formulas and key facts",
+                icon: "📝",
                 color: "bg-green-500"
               },
               {
@@ -547,9 +614,15 @@ export default function FeaturesPage() {
             <p className="text-lg text-gray-600 mb-8">
               Try Notopy today and see how AI can transform your learning experience.
             </p>
-            <Link href="/notes" className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg">
-              Start creating notes
-            </Link>
+            {user ? (
+              <Link href="/notes" className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg">
+                Start creating notes
+              </Link>
+            ) : (
+              <Link href="/login" className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg">
+                Sign in to create notes
+              </Link>
+            )}
           </div>
         </div>
       </section>

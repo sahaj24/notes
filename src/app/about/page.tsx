@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import Link from 'next/link';
+import { CoinDisplay } from '@/components/CoinDisplay';
 
 export default function AboutPage() {
   const { user } = useAuth();
@@ -21,36 +22,58 @@ export default function AboutPage() {
     <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2 cursor-pointer group transition-all duration-200">
+          <Link
+            href="/"
+            className="flex items-center space-x-2 cursor-pointer group transition-all duration-200"
+          >
             <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
               <div className="w-4 h-4 bg-white rounded-sm"></div>
             </div>
             <span className="text-xl font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-200">Notopy</span>
           </Link>
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/features" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200">
+            <Link
+              href="/features"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
+            >
               Features
             </Link>
-            <Link href="/pricing" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200">
+            <Link
+              href="/pricing"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-600 hover:text-gray-900"
+            >
               Pricing
             </Link>
-            <Link href="/about" className="text-sm font-medium text-gray-900 relative">
+            <Link
+              href="/about"
+              className="text-sm font-medium transition-all duration-200 relative text-gray-900"
+            >
               About
               <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-black rounded-full"></div>
             </Link>
             <div className="flex items-center space-x-3">
               {user ? (
                 <>
-                  <Link href="/notes" className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95">
+                  {profile && <CoinDisplay className="mr-2" />}
+                  <Link
+                    href="/notes"
+                    className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
                     Create Note
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200">
+                  <Link
+                    href="/login"
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                  >
                     Sign In
                   </Link>
-                  <Link href="/signup" className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95">
+                  <Link
+                    href="/signup"
+                    className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
                     Get Started
                   </Link>
                 </>
@@ -58,14 +81,14 @@ export default function AboutPage() {
             </div>
           </nav>
           <div className="md:hidden">
-            <button 
+            <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 hover:bg-gray-100 rounded-md transition-colors duration-200"
             >
-              <svg 
-                className={`w-6 h-6 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className={`w-6 h-6 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`}
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 {mobileMenuOpen ? (
@@ -77,31 +100,52 @@ export default function AboutPage() {
             </button>
           </div>
         </div>
-        
+
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100">
             <div className="px-6 py-4 space-y-4">
-              <Link href="/features" className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200 py-2">
+              <Link
+                href="/features"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
+              >
                 Features
               </Link>
-              <Link href="/pricing" className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-200 py-2">
+              <Link
+                href="/pricing"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-600 hover:text-gray-900"
+              >
                 Pricing
               </Link>
-              <Link href="/about" className="block w-full text-left text-sm font-medium text-gray-900 font-semibold py-2">
+              <Link
+                href="/about"
+                className="block w-full text-left text-sm font-medium transition-all duration-200 py-2 text-gray-900 font-semibold"
+              >
                 About
               </Link>
               <div className="border-t border-gray-100 pt-4 mt-4">
                 {user ? (
-                  <Link href="/notes" className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 text-center">
-                    Create Note
-                  </Link>
+                  <>
+                    {profile && <div className="mb-4"><CoinDisplay showDetails={true} /></div>}
+                    <Link
+                      href="/notes"
+                      className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 text-center"
+                    >
+                      Create Note
+                    </Link>
+                  </>
                 ) : (
                   <>
-                    <Link href="/login" className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 py-2">
+                    <Link
+                      href="/login"
+                      className="block w-full text-left text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-200 py-2"
+                    >
                       Sign In
                     </Link>
-                    <Link href="/signup" className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 mt-2 text-center">
+                    <Link
+                      href="/signup"
+                      className="block w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-all duration-200 mt-2 text-center"
+                    >
                       Get Started
                     </Link>
                   </>
@@ -135,7 +179,11 @@ export default function AboutPage() {
             <div className="space-y-2 text-sm text-gray-600">
               <Link href="/features" className="block hover:text-gray-900 transition-colors duration-200">Features</Link>
               <Link href="/pricing" className="block hover:text-gray-900 transition-colors duration-200">Pricing</Link>
-              <Link href="/notes" className="block hover:text-gray-900 transition-colors duration-200">Try Now</Link>
+              {user ? (
+                <Link href="/notes" className="block hover:text-gray-900 transition-colors duration-200">Try Now</Link>
+              ) : (
+                <Link href="/login" className="block hover:text-gray-900 transition-colors duration-200">Sign in to try</Link>
+              )}
             </div>
           </div>
           <div>
@@ -170,7 +218,7 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      
+
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-6 py-24 pt-32">
         <div className="max-w-4xl mx-auto text-center mb-20">
@@ -191,17 +239,17 @@ export default function AboutPage() {
               <h2 className="text-3xl font-light text-gray-900 mb-6">Our Story</h2>
               <div className="space-y-4 text-lg text-gray-600 leading-relaxed">
                 <p>
-                  Notopy was born from a simple observation: despite all the technological advancements in education, 
+                  Notopy was born from a simple observation: despite all the technological advancements in education,
                   note-taking remains largely unchanged—tedious, time-consuming, and often ineffective.
                 </p>
                 <p>
-                  Founded in 2024 by a team of educators, designers, and AI specialists, we set out to create a 
-                  platform that transforms how people capture and organize information. By combining advanced AI 
-                  with beautiful visual design, we've created a tool that generates notes that 
+                  Founded in 2024 by a team of educators, designers, and AI specialists, we set out to create a
+                  platform that transforms how people capture and organize information. By combining advanced AI
+                  with beautiful visual design, we've created a tool that generates notes that
                   are not just informative but also engaging and memorable.
                 </p>
                 <p>
-                  Our mission is to make learning more accessible and enjoyable for everyone, from students 
+                  Our mission is to make learning more accessible and enjoyable for everyone, from students
                   preparing for exams to professionals documenting complex projects.
                 </p>
               </div>
@@ -230,7 +278,7 @@ export default function AboutPage() {
               The principles that guide everything we do at Notopy
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-white rounded-lg border border-gray-100 p-8 hover:shadow-lg transition-all duration-300">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -268,52 +316,8 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Note Templates */}
-        <div className="mb-24">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-light text-gray-900 mb-4">
-              Beautiful <span className="font-medium">note templates</span>
-            </h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Choose from a variety of professionally designed templates
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Creative Collage",
-                description: "Colorful, hand-drawn style with organic layouts and visual elements",
-                color: "bg-gradient-to-br from-purple-50 to-purple-100",
-                accent: "border-purple-300"
-              },
-              {
-                title: "Academic Study",
-                description: "Clean, structured format perfect for research and academic work",
-                color: "bg-gradient-to-br from-blue-50 to-blue-100",
-                accent: "border-blue-300"
-              },
-              {
-                title: "Mind Map",
-                description: "Visual connections showing relationships between concepts and ideas",
-                color: "bg-gradient-to-br from-green-50 to-green-100",
-                accent: "border-green-300"
-              }
-            ].map((style, index) => (
-              <div 
-                key={index} 
-                className={`rounded-lg p-8 shadow-sm hover:shadow-md transition-all duration-300 border-l-4 ${style.accent} ${style.color}`}
-              >
-                <h3 className="text-xl font-medium text-gray-900 mb-3">{style.title}</h3>
-                <p className="text-gray-600 mb-6">{style.description}</p>
-                <div className="h-32 bg-white rounded-lg shadow-sm flex items-center justify-center">
-                  <span className="text-gray-400">Note preview</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        
+
+
         {/* How It Works */}
         <div className="mb-24">
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-12">
@@ -326,7 +330,7 @@ export default function AboutPage() {
                   Create beautiful notes in just a few simple steps
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="bg-white rounded-lg p-6 shadow-sm">
                   <div className="flex items-start space-x-4">
@@ -341,7 +345,7 @@ export default function AboutPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="bg-white rounded-lg p-6 shadow-sm">
                   <div className="flex items-start space-x-4">
                     <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
@@ -355,7 +359,7 @@ export default function AboutPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="bg-white rounded-lg p-6 shadow-sm">
                   <div className="flex items-start space-x-4">
                     <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
@@ -369,7 +373,7 @@ export default function AboutPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="bg-white rounded-lg p-6 shadow-sm">
                   <div className="flex items-start space-x-4">
                     <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">

@@ -45,6 +45,12 @@ export const LandingPage: React.FC = () => {
   }, [mounted]);
 
   const handleShowApp = () => {
+    if (!user) {
+      // Redirect to login if not authenticated
+      window.location.href = '/login';
+      return;
+    }
+    
     setIsTransitioning(true);
     setTimeout(() => {
       setShowApp(true);
@@ -352,7 +358,7 @@ export const LandingPage: React.FC = () => {
             <div className="space-y-2 text-sm text-gray-600">
               <Link href="/features" className="block hover:text-gray-900 transition-colors duration-200">Features</Link>
               <Link href="/pricing" className="block hover:text-gray-900 transition-colors duration-200">Pricing</Link>
-              <button onClick={handleShowApp} className="block hover:text-gray-900 transition-colors duration-200 text-left bg-transparent p-0 text-sm text-gray-600">Try Now</button>
+              <button onClick={handleShowApp} className="block hover:text-gray-900 transition-colors duration-200 text-left bg-transparent p-0 text-sm text-gray-600">{user ? "Try Now" : "Sign in to try"}</button>
             </div>
           </div>
           <div>
@@ -424,7 +430,7 @@ export const LandingPage: React.FC = () => {
               </svg>
               <span>No credit card required</span>
               <span className="mx-2">•</span>
-              <span>10 free notes</span>
+              <span>30 free notes</span>
             </div>
           </div>
 
@@ -491,9 +497,9 @@ export const LandingPage: React.FC = () => {
                 icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
               },
               {
-                title: "Multiple Note Formats",
-                description: "Create study guides, mind maps, timelines, comparison charts, and more. Each format optimized for different learning styles.",
-                icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                title: "Template Spaces",
+                description: "Our templates include intentional spaces for your personal notes and additions, making customization easy.",
+                icon: "M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"
               }
             ].map((feature, index) => (
               <div
@@ -580,7 +586,7 @@ export const LandingPage: React.FC = () => {
               onClick={handleShowApp}
               className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
             >
-              Try it now
+              {user ? "Try it now" : "Sign in to try"}
             </button>
           </div>
         </div>
@@ -637,7 +643,7 @@ export const LandingPage: React.FC = () => {
               onClick={handleShowApp}
               className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
             >
-              Try all templates
+              {user ? "Try all templates" : "Sign in to try templates"}
             </button>
           </div>
         </div>
@@ -704,7 +710,7 @@ export const LandingPage: React.FC = () => {
                 onClick={handleShowApp}
                 className="bg-white text-black px-8 py-4 rounded-md font-medium hover:bg-gray-100 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
               >
-                Try for free
+                {user ? "Try for free" : "Sign in to try"}
               </button>
               <Link
                 href="/pricing"
