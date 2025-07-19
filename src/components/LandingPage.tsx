@@ -592,50 +592,114 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Enhanced Note Examples Section */}
+      {/* AI-Powered Features Section */}
       <section className="bg-gray-50 py-24">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-light text-gray-900 mb-4">
-              Beautiful <span className="font-medium">note styles</span>
+              AI-Powered <span className="font-medium">Innovations</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Choose from a variety of professionally designed templates
+              Advanced technology that transforms how you create and learn
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Creative Collage",
-                description: "Colorful, hand-drawn style with organic layouts and visual elements",
-                color: "bg-gradient-to-br from-purple-50 to-purple-100",
-                accent: "border-purple-300"
-              },
-              {
-                title: "Academic Study",
-                description: "Clean, structured format perfect for research and academic work",
-                color: "bg-gradient-to-br from-blue-50 to-blue-100",
-                accent: "border-blue-300"
-              },
-              {
-                title: "Mind Map",
-                description: "Visual connections showing relationships between concepts and ideas",
-                color: "bg-gradient-to-br from-green-50 to-green-100",
-                accent: "border-green-300"
-              }
-            ].map((style, index) => (
-              <div
-                key={index}
-                className={`rounded-lg p-8 shadow-sm hover:shadow-md transition-all duration-300 border-l-4 ${style.accent} ${style.color}`}
-              >
-                <h3 className="text-xl font-medium text-gray-900 mb-3">{style.title}</h3>
-                <p className="text-gray-600 mb-6">{style.description}</p>
-                <div className="h-32 bg-white rounded-lg shadow-sm flex items-center justify-center">
-                  <span className="text-gray-400">Note preview</span>
-                </div>
+            <div className="bg-white rounded-lg p-8 shadow-sm hover:shadow-lg transition-all duration-300 hover:transform hover:scale-105">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
               </div>
-            ))}
+              <h3 className="text-xl font-medium text-gray-900 mb-3 text-center">Smart Content Analysis</h3>
+              <p className="text-gray-600 text-center mb-4">
+                Our AI analyzes your topic and automatically structures information in the most effective way for learning and retention.
+              </p>
+              <ul className="text-gray-600 space-y-2 mt-4">
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Identifies key concepts automatically</span>
+                </li>
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Creates logical information hierarchy</span>
+                </li>
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Adapts to different learning styles</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div className="bg-white rounded-lg p-8 shadow-sm hover:shadow-lg transition-all duration-300 hover:transform hover:scale-105">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-medium text-gray-900 mb-3 text-center">Visual Learning Enhancement</h3>
+              <p className="text-gray-600 text-center mb-4">
+                Our technology transforms plain text into visually engaging formats that improve comprehension and memory retention by 40%.
+              </p>
+              <ul className="text-gray-600 space-y-2 mt-4">
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Converts concepts to visual diagrams</span>
+                </li>
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Uses color psychology for better recall</span>
+                </li>
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Creates spatial relationships between ideas</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div className="bg-white rounded-lg p-8 shadow-sm hover:shadow-lg transition-all duration-300 hover:transform hover:scale-105">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-medium text-gray-900 mb-3 text-center">Customizable Spaces</h3>
+              <p className="text-gray-600 text-center mb-4">
+                Our templates include strategic spaces for your personal notes and additions, making it easy to customize content after generation.
+              </p>
+              <ul className="text-gray-600 space-y-2 mt-4">
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-purple-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Add your own insights and examples</span>
+                </li>
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-purple-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Highlight important information</span>
+                </li>
+                <li className="flex items-start">
+                  <svg className="w-5 h-5 text-purple-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Personalize content for your needs</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <div className="text-center mt-12">
@@ -643,7 +707,7 @@ export const LandingPage: React.FC = () => {
               onClick={handleShowApp}
               className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
             >
-              {user ? "Try all templates" : "Sign in to try templates"}
+              {user ? "Try these features" : "Sign in to experience"}
             </button>
           </div>
         </div>
