@@ -219,7 +219,7 @@ export default function FeaturesPage() {
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      
+
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-6 py-24 pt-32">
         <div className="max-w-4xl mx-auto text-center mb-20">
@@ -244,7 +244,7 @@ export default function FeaturesPage() {
                 Transform any topic into beautifully structured, visually enhanced notes in seconds
               </p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
                 <h3 className="text-2xl font-medium text-gray-900 mb-4">How it works</h3>
@@ -312,7 +312,7 @@ export default function FeaturesPage() {
               Everything you need for effective note-taking and learning
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
@@ -341,8 +341,8 @@ export default function FeaturesPage() {
                 icon: "M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               }
             ].map((feature, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="p-8 bg-white rounded-lg border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg hover:scale-105"
               >
                 <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center mb-6">
@@ -353,13 +353,13 @@ export default function FeaturesPage() {
                 <h3 className="text-xl font-medium text-gray-900 mb-3">{feature.title}</h3>
                 <p className="text-gray-600 leading-relaxed">{feature.description}</p>
                 {feature.title === "Template Spaces" && (
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0 mt-0.5">
-                      </div>
-                      <div className="ml-2">
-                      </div>
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0 mt-0.5">
                     </div>
-                 
+                    <div className="ml-2">
+                    </div>
+                  </div>
+
                 )}
               </div>
             ))}
@@ -375,42 +375,39 @@ export default function FeaturesPage() {
             <p className="text-lg text-gray-600 mb-8">
               Specialized tools for different user needs
             </p>
-            
+
             {/* Tabs */}
             <div className="flex flex-wrap justify-center gap-4 mb-12">
-              <button 
+              <button
                 onClick={() => setActiveTab('students')}
-                className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'students' 
-                    ? 'bg-black text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === 'students'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 For Students
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('professionals')}
-                className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'professionals' 
-                    ? 'bg-black text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === 'professionals'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 For Professionals
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('researchers')}
-                className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'researchers' 
-                    ? 'bg-black text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === 'researchers'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 For Researchers
               </button>
             </div>
           </div>
-          
+
           {/* Tab content */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {activeTab === 'students' && [
@@ -435,8 +432,8 @@ export default function FeaturesPage() {
                 icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               }
             ].map((feature, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="p-6 bg-white rounded-lg border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg flex items-start space-x-4"
               >
                 <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -450,7 +447,7 @@ export default function FeaturesPage() {
                 </div>
               </div>
             ))}
-            
+
             {activeTab === 'professionals' && [
               {
                 title: "Meeting Notes",
@@ -473,8 +470,8 @@ export default function FeaturesPage() {
                 icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
               }
             ].map((feature, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="p-6 bg-white rounded-lg border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg flex items-start space-x-4"
               >
                 <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -488,7 +485,7 @@ export default function FeaturesPage() {
                 </div>
               </div>
             ))}
-            
+
             {activeTab === 'researchers' && [
               {
                 title: "Literature Review",
@@ -511,8 +508,8 @@ export default function FeaturesPage() {
                 icon: "M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
               }
             ].map((feature, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="p-6 bg-white rounded-lg border border-gray-100 hover:border-gray-200 transition-all duration-300 hover:shadow-lg flex items-start space-x-4"
               >
                 <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -539,7 +536,7 @@ export default function FeaturesPage() {
               Choose from a variety of templates designed for different learning styles
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
@@ -579,8 +576,8 @@ export default function FeaturesPage() {
                 color: "bg-gray-500"
               }
             ].map((template, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="bg-white rounded-lg border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-105"
               >
                 <div className={`${template.color} h-3`}></div>

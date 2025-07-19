@@ -51,10 +51,8 @@ export const LandingPage: React.FC = () => {
       return;
     }
     
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setShowApp(true);
-    }, 150);
+    // Always redirect to /notes route instead of showing app in the same page
+    window.location.href = '/notes';
   };
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {

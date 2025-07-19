@@ -14,6 +14,9 @@ interface NoteTemplate {
   description: string;
   icon: string;
   color: string;
+  emphasis?: string;
+  colors?: string[];
+  specialInstructions?: string;
 }
 
 interface GenerationHistory {
@@ -832,7 +835,7 @@ export const BeautifulNote: React.FC = () => {
   };
 
   const handleBackToLanding = () => {
-    window.location.reload(); // Simple way to go back to landing page
+    window.location.href = '/notes'; // Redirect to /notes route instead of reloading
   };
 
   const resetToInput = () => {
