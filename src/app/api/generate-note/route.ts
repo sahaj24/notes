@@ -233,14 +233,12 @@ function createHtmlPrompt(topic: string, template: string = 'creative', numPages
     return createTimelinePrompt(topic, numPages);
   } else if (template === 'academic') {
     return createAcademicPrompt(topic, numPages);
-  } else if (template === 'mindmap') {
-    return createMindmapPrompt(topic, numPages);
+  } else if (template === 'cheatsheet') {
+    return createCheatsheetPrompt(topic, numPages);
   } else if (template === 'comparison') {
     return createComparisonPrompt(topic, numPages);
   } else if (template === 'notebook') {
     return createNotebookPrompt(topic, numPages);
-  } else if (template === 'cheatsheet') {
-    return createCheatsheetPrompt(topic, numPages);
   } else {
     // Default to creative template
     return createCreativePrompt(topic, numPages);
@@ -1132,7 +1130,7 @@ function createAcademicPrompt(topic: string, numPages: number = 1): string {
   `;
 }
 
-// Add implementations for other template functions (mindmap, comparison, notebook, cheatsheet)
+// Add implementations for other template functions (comparison, notebook, cheatsheet)
 // For brevity, I'll just include stubs for these functions
 
 function createMindmapPrompt(topic: string, numPages: number = 1): string {
