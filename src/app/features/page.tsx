@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import Link from 'next/link';
 import { CoinDisplay } from '@/components/CoinDisplay';
+import Logo from '@/components/Logo';
 
 export default function FeaturesPage() {
   const { user } = useAuth();
@@ -23,15 +24,7 @@ export default function FeaturesPage() {
     <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center space-x-2 cursor-pointer group transition-all duration-200"
-          >
-            <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-              <div className="w-4 h-4 bg-white rounded-sm"></div>
-            </div>
-            <span className="text-xl font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-200">Notopy</span>
-          </Link>
+          <Logo href="/" size="md" showText={true} />
           <nav className="hidden md:flex items-center space-x-8">
             <Link
               href="/features"

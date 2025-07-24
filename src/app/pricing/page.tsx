@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { PayPalSubscription } from '@/components/PayPalSubscription';
 import { CoinDisplay } from '@/components/CoinDisplay';
 import { getAllPricingTiers, type PricingTier } from '@/config/pricing';
+import Logo from '@/components/Logo';
 
 // Extend window object for TypeScript
 declare global {
@@ -84,15 +85,7 @@ export default function PricingPage() {
     <header className="border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center space-x-2 cursor-pointer group transition-all duration-200"
-          >
-            <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-              <div className="w-4 h-4 bg-white rounded-sm"></div>
-            </div>
-            <span className="text-xl font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-200">Notopy</span>
-          </Link>
+          <Logo href="/" size="md" showText={true} />
           <nav className="hidden md:flex items-center space-x-8">
             <Link
               href="/features"
@@ -217,11 +210,8 @@ export default function PricingPage() {
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-6 h-6 bg-black rounded-sm flex items-center justify-center">
-                <div className="w-3 h-3 bg-white rounded-sm"></div>
-              </div>
-              <span className="text-lg font-medium text-gray-900">Notopy</span>
+            <div className="mb-4">
+              <Logo href="/" size="sm" showText={true} />
             </div>
             <p className="text-sm text-gray-600">
               AI-powered note generation platform for researchers, students, and professionals.

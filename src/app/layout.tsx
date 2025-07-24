@@ -18,9 +18,32 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Notopy - AI-Powered Note Generation",
   description: "Transform any topic into beautiful, colorful notes with hand-drawn elements using AI",
+  keywords: ["AI notes", "note generation", "study notes", "AI writing", "note taking"],
+  authors: [{ name: "Notopy Team" }],
+  creator: "Notopy",
+  publisher: "Notopy",
   icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-icon.png',
+    icon: [
+      { url: '/icon', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/apple-icon', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+  },
+  manifest: '/manifest.json',
+  openGraph: {
+    title: "Notopy - AI-Powered Note Generation",
+    description: "Transform any topic into beautiful, colorful notes with hand-drawn elements using AI",
+    url: 'https://notopy.com',
+    siteName: 'Notopy',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "Notopy - AI-Powered Note Generation",
+    description: "Transform any topic into beautiful, colorful notes with hand-drawn elements using AI",
   },
 };
 

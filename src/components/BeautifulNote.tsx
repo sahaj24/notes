@@ -7,6 +7,7 @@ import { CoinDisplay } from './CoinDisplay';
 import { supabase } from '@/lib/supabase';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import Logo from './Logo';
 
 interface NoteTemplate {
   id: string;
@@ -1045,12 +1046,7 @@ export const BeautifulNote: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
             </button>
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center">
-                <div className="w-4 h-4 bg-white rounded-sm"></div>
-              </div>
-              <h1 className="text-xl font-medium text-gray-900">Notopy</h1>
-            </div>
+            <Logo href="/" size="md" showText={true} />
           </div>
 
           <div className="flex items-center space-x-4">
