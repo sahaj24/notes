@@ -5,6 +5,7 @@ import { useUserProfile } from '@/contexts/UserProfileContext';
 import Link from 'next/link';
 import { PayPalSubscription } from '@/components/PayPalSubscription';
 import { CoinDisplay } from '@/components/CoinDisplay';
+import { getAllPricingTiers, type PricingTier } from '@/config/pricing';
 
 // Extend window object for TypeScript
 declare global {
@@ -19,14 +20,17 @@ export default function PricingPage() {
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<{ name: string; amount: string; coins: number } | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PricingTier | null>(null);
+
+  // Get all pricing tiers from centralized config
+  const pricingTiers = getAllPricingTiers();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const openModal = (planName: string, amount: string, coins: number) => {
-    setSelectedPlan({ name: planName, amount, coins });
+  const openModal = (tier: PricingTier) => {
+    setSelectedPlan(tier);
     setShowModal(true);
   };
 
@@ -50,17 +54,18 @@ export default function PricingPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          
-          {selectedPlan && (
+
+          {selectedPlan && selectedPlan.isPayPal && selectedPlan.paypalConfig && (
             <div className="text-center">
               <h3 className="text-2xl font-semibold text-gray-900 mb-2">{selectedPlan.name} Plan</h3>
-              <p className="text-gray-600 mb-4">{selectedPlan.coins} coins for ${selectedPlan.amount}</p>
-              
+              <p className="text-gray-600 mb-4">{selectedPlan.coins} coins for {selectedPlan.priceDisplay}</p>
+
               <div className="mt-6">
-                <PayPalSubscription 
-                  planId="P-37D43660E4028554FNB2I7FQ"
-                  amount={selectedPlan.amount}
-                  coins={selectedPlan.coins}
+                <PayPalSubscription
+                  hostedButtonId={selectedPlan.paypalConfig.hostedButtonId}
+                  amount={selectedPlan.paypalConfig.amount}
+                  coins={selectedPlan.paypalConfig.coins}
+                  tier={selectedPlan.paypalConfig.tier}
                   onSuccess={(paymentId) => {
                     console.log('Payment successful:', paymentId);
                     closeModal();
@@ -266,7 +271,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      
+
       <section className="max-w-7xl mx-auto px-6 py-24 pt-32">
         <div className="max-w-4xl mx-auto text-center mb-20">
           <h1 className="text-6xl font-light text-gray-900 mb-8 leading-tight">
@@ -280,189 +285,61 @@ export default function PricingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-20">
-          <div className="p-8 bg-white rounded-lg border border-gray-200 flex flex-col h-full">
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">Free</h3>
-              <p className="text-gray-600 mb-4">Try before you buy</p>
-              <div className="text-4xl font-light text-gray-900">$0</div>
-              <div className="text-gray-600">forever</div>
-            </div>
-            <ul className="space-y-4 mb-8 flex-grow">
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">10 free coins</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Generate up to 10 pages</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">All note formats</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">No credit card required</span>
-              </li>
-            </ul>
-            <div className="space-y-2 mt-auto">
-              <Link href="/signup" className="block w-full border border-gray-300 text-gray-900 px-6 py-3 rounded-md font-medium hover:border-gray-400 transition-colors text-center">
-                Get started free
-              </Link>
-            </div>
-          </div>
+          {pricingTiers.map((tier) => (
+            <div
+              key={tier.id}
+              className={`p-8 bg-white rounded-lg ${tier.isHighlighted ? 'border-2 border-black' : 'border border-gray-200'
+                } relative flex flex-col h-full`}
+            >
+              {'badge' in tier && tier.badge && (
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                  <span className="bg-black text-white px-4 py-1 rounded-full text-sm font-medium">
+                    {tier.badge}
+                  </span>
+                </div>
+              )}
 
-          <div className="p-8 bg-white rounded-lg border border-gray-200 flex flex-col h-full">
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">100 Coins</h3>
-              <p className="text-gray-600 mb-4">Perfect for getting started</p>
-              <div className="text-4xl font-light text-gray-900">$4.99</div>
-              <div className="text-gray-600">one-time payment</div>
-            </div>
-            <ul className="space-y-4 mb-8 flex-grow">
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">100 coins total</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Generate up to 100 pages</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">All note formats</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">PDF export</span>
-              </li>
-            </ul>
-            <div className="space-y-2 mt-auto">
-              <button
-                onClick={() => openModal('100 Coins', '4.99', 100)}
-                className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
-              >
-                Pay Now
-              </button>
-            </div>
-          </div>
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-medium text-gray-900 mb-2">{tier.name}</h3>
+                <p className="text-gray-600 mb-4">{tier.description}</p>
+                <div className="text-4xl font-light text-gray-900">{tier.priceDisplay}</div>
+                <div className="text-gray-600">{tier.period}</div>
+              </div>
 
-          <div className="p-8 bg-white rounded-lg border-2 border-black relative flex flex-col h-full">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-              <span className="bg-black text-white px-4 py-1 rounded-full text-sm font-medium">Best Value</span>
-            </div>
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">500 Coins</h3>
-              <p className="text-gray-600 mb-4">For students and professionals</p>
-              <div className="text-4xl font-light text-gray-900">$19.99</div>
-              <div className="text-gray-600">one-time payment</div>
-            </div>
-            <ul className="space-y-4 mb-8 flex-grow">
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">500 coins total</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Generate up to 500 pages</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">All note formats</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">PDF export</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Priority support</span>
-              </li>
-            </ul>
-            <div className="space-y-2 mt-auto">
-              <button
-                onClick={() => openModal('500 Coins', '19.99', 500)}
-                className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
-              >
-                Pay Now
-              </button>
-            </div>
-          </div>
+              <ul className="space-y-4 mb-8 flex-grow">
+                {tier.features.map((feature, index) => (
+                  <li key={index} className="flex items-center">
+                    <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-gray-600">{feature}</span>
+                  </li>
+                ))}
+              </ul>
 
-          <div className="p-8 bg-white rounded-lg border border-gray-200 flex flex-col h-full">
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-medium text-gray-900 mb-2">1500 Coins</h3>
-              <p className="text-gray-600 mb-4">For power users and teams</p>
-              <div className="text-4xl font-light text-gray-900">$59.99</div>
-              <div className="text-gray-600">one-time payment</div>
+              <div className="space-y-2 mt-auto">
+                {tier.isPayPal ? (
+                  <button
+                    onClick={() => openModal(tier)}
+                    className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
+                  >
+                    {tier.buttonText}
+                  </button>
+                ) : tier.buttonLink ? (
+                  <Link
+                    href={tier.buttonLink}
+                    className="block w-full border border-gray-300 text-gray-900 px-6 py-3 rounded-md font-medium hover:border-gray-400 transition-colors text-center"
+                  >
+                    {tier.buttonText}
+                  </Link>
+                ) : (
+                  <button className="w-full border border-gray-300 text-gray-900 px-6 py-3 rounded-md font-medium hover:border-gray-400 transition-colors">
+                    {tier.buttonText}
+                  </button>
+                )}
+              </div>
             </div>
-            <ul className="space-y-4 mb-8 flex-grow">
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">1500 coins total</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Generate up to 1500 pages</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">All note formats</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">PDF export</span>
-              </li>
-              <li className="flex items-center">
-                <svg className="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-gray-600">Priority support</span>
-              </li>
-            </ul>
-            <div className="space-y-2 mt-auto">
-              <button
-                onClick={() => openModal('1500 Coins', '59.99', 1500)}
-                className="w-full bg-black text-white px-6 py-3 rounded-md font-medium hover:bg-gray-800 transition-colors"
-              >
-                Pay Now
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
 
         <div className="text-center">

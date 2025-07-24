@@ -3,18 +3,21 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/contexts/UserProfileContext';
+import { PAYPAL_CONFIG, getPayPalSDKUrl, API_ENDPOINTS, PAYMENT_METHODS } from '@/config/pricing';
 
 interface PayPalSubscriptionProps {
-  planId: string;
+  hostedButtonId?: string;
   amount: string;
   coins: number;
+  tier?: string;
   onSuccess?: (paymentId: string) => void;
 }
 
 export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({ 
-  planId = 'P-37D43660E4028554FNB2I7FQ',
+  hostedButtonId,
   amount,
   coins,
+  tier = 'one-time',
   onSuccess 
 }) => {
   const { user, session } = useAuth();
@@ -23,32 +26,73 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
   const scriptLoaded = useRef(false);
 
   useEffect(() => {
-    if (scriptLoaded.current) return;
-
-    // Load PayPal SDK
-    const script = document.createElement('script');
-    script.src = 'https://www.paypal.com/sdk/js?client-id=AdFWv3FU91KhSop6LI9ZY8EzmPDzGpFjD2LYl7YyZVYpTPNl--1kQFFS9exTmKE8fPcbdXN_RKT7aoJM&currency=USD';
-    script.async = true;
-    
-    script.onload = () => {
-      scriptLoaded.current = true;
-      renderPayPalButton();
-    };
-    
-    document.body.appendChild(script);
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
+    const loadPayPalSDK = () => {
+      // Check if script is already loaded
+      if (scriptLoaded.current || document.querySelector('script[src*="paypal.com/sdk"]')) {
+        renderPayPalButton();
+        return;
       }
+
+      // Load PayPal SDK with hosted-buttons component
+      const script = document.createElement('script');
+      script.src = 'https://www.paypal.com/sdk/js?client-id=BAAxRFSP8kAHMTn1JreZMzW1dhoxQa9-5Bifrq6aDyjG4fNy6XmEuGAHIotM_ygJQM1YsLLXVFmzDxIvts&components=hosted-buttons&disable-funding=venmo&currency=USD';
+      script.async = true;
+      
+      script.onload = () => {
+        scriptLoaded.current = true;
+        // Wait a bit for PayPal to fully initialize
+        setTimeout(() => {
+          renderPayPalButton();
+        }, 500);
+      };
+      
+      document.head.appendChild(script);
     };
-  }, []);
+
+    loadPayPalSDK();
+  }, [hostedButtonId, amount, coins, tier]);
 
   const renderPayPalButton = () => {
-    if (!window.paypal || !paypalRef.current) return;
+    if (!paypalRef.current) return;
 
-    // Clear existing buttons
+    // Clear existing content
     paypalRef.current.innerHTML = '';
+
+    // Check if PayPal is available
+    if (!window.paypal) {
+      console.error('PayPal SDK not loaded');
+      return;
+    }
+
+    // For hosted buttons ($4.99, $19.99, and $59.99)
+    if (hostedButtonId && (amount === "4.99" || amount === "19.99" || amount === "59.99")) {
+      const containerId = `paypal-container-${hostedButtonId}`;
+      paypalRef.current.innerHTML = `<div id="${containerId}"></div>`;
+      
+      // Check if HostedButtons is available
+      if (window.paypal.HostedButtons) {
+        try {
+          window.paypal.HostedButtons({
+            hostedButtonId: hostedButtonId
+          }).render(`#${containerId}`);
+        } catch (error) {
+          console.error('Error rendering hosted button:', error);
+          // Fallback to regular button
+          renderRegularButton();
+        }
+      } else {
+        console.error('PayPal HostedButtons not available');
+        // Fallback to regular button
+        renderRegularButton();
+      }
+    } else {
+      // Regular PayPal button for other tiers
+      renderRegularButton();
+    }
+  };
+
+  const renderRegularButton = () => {
+    if (!window.paypal || !paypalRef.current) return;
 
     window.paypal.Buttons({
       style: {
@@ -57,7 +101,7 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
         layout: 'vertical',
         label: 'pay'
       },
-      createOrder: function(data: any, actions: any) {
+      createOrder: function(_data: any, actions: any) {
         return actions.order.create({
           purchase_units: [{
             amount: {
@@ -67,7 +111,7 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
           }]
         });
       },
-      onApprove: async function(data: any, actions: any) {
+      onApprove: async function(_data: any, actions: any) {
         const order = await actions.order.capture();
         const paymentId = order.id;
         console.log('PayPal payment successful:', paymentId);
@@ -80,17 +124,17 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
 
           console.log('Making API call to credit coins...');
           
-          // Credit coins to user for one-time payment
-          const response = await fetch('/api/user/upgrade', {
+          // Credit coins to user for one-time payment using centralized config
+          const response = await fetch(API_ENDPOINTS.UPGRADE, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
-              tier: 'one-time',
+              tier: tier,
               paymentId: paymentId,
-              paymentMethod: 'paypal',
+              paymentMethod: PAYMENT_METHODS.PAYPAL,
               coins: coins,
               amount: amount
             }),
