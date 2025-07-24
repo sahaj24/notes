@@ -43,6 +43,8 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
         // Wait a bit for PayPal to fully initialize
         setTimeout(() => {
           renderPayPalButton();
+          // Add CSS to make PayPal button text black
+          addPayPalTextStyling();
         }, 500);
       };
       
@@ -51,6 +53,35 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
 
     loadPayPalSDK();
   }, [hostedButtonId, amount, coins, tier]);
+
+  // Add CSS styling to make PayPal button text black
+  const addPayPalTextStyling = () => {
+    if (document.getElementById('paypal-text-styling')) return; // Avoid duplicate styles
+    
+    const style = document.createElement('style');
+    style.id = 'paypal-text-styling';
+    style.textContent = `
+      /* PayPal button text styling - make text black */
+      .paypal-button-text,
+      .paypal-button-label-container,
+      .paypal-button-label,
+      [data-funding-source] .paypal-button-text,
+      [data-funding-source] .paypal-button-label,
+      .paypal-button .paypal-button-text,
+      .paypal-button .paypal-button-label {
+        color: #000000 !important;
+      }
+      
+      /* Target PayPal hosted button text specifically */
+      div[id*="paypal-container"] .paypal-button-text,
+      div[id*="paypal-container"] .paypal-button-label,
+      div[id*="paypal-container"] span,
+      div[id*="paypal-container"] div {
+        color: #000000 !important;
+      }
+    `;
+    document.head.appendChild(style);
+  };
 
   const renderPayPalButton = () => {
     if (!paypalRef.current) return;
