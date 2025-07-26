@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://notopy.com/sitemap.xml
+
+# Disallow admin or sensitive areas
+Disallow: /api/
+Disallow: /.next/
+Disallow: /admin/

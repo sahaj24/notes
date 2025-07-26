@@ -39,12 +39,22 @@ export const metadata: Metadata = {
     url: 'https://notopy.com',
     siteName: 'Notopy',
     type: 'website',
+    images: [
+      {
+        url: 'https://notopy.com/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Notopy - AI-Powered Note Generation',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: "Notopy - AI-Powered Note Generation",
     description: "Transform any topic into beautiful, colorful notes with hand-drawn elements using AI",
+    images: ['https://notopy.com/og-image.png'],
   },
+  metadataBase: new URL('https://notopy.com'),
 };
 
 export default function RootLayout({
