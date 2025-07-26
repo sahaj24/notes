@@ -33,7 +33,7 @@ const Logo: React.FC<LogoProps> = ({
   };
 
   const LogoIcon = () => (
-    <div className={`${sizeClasses[size]} bg-black rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
+    <div className={`${sizeClasses[size]} bg-black rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-200 border border-gray-800`}>
       <div className={`${innerSizeClasses[size]} bg-white rounded-sm`}></div>
     </div>
   );

@@ -232,18 +232,17 @@ export default function AboutPage() {
               <h2 className="text-3xl font-light text-gray-900 mb-6">Our Story</h2>
               <div className="space-y-4 text-lg text-gray-600 leading-relaxed">
                 <p>
-                  Notopy was born from a simple observation: despite all the technological advancements in education,
-                  note-taking remains largely unchanged—tedious, time-consuming, and often ineffective.
+                  We looked around and realized there weren't any good AI-powered note-making tools out there.
+                  So we decided to build one ourselves.
                 </p>
                 <p>
-                  Founded in 2024 by a team of educators, designers, and AI specialists, we set out to create a
-                  platform that transforms how people capture and organize information. By combining advanced AI
-                  with beautiful visual design, we've created a tool that generates notes that
-                  are not just informative but also engaging and memorable.
+                  Notopy transforms any topic into beautiful, structured notes using advanced AI.
+                  We combine smart technology with clean design to create notes that are not just informative,
+                  but actually engaging and memorable.
                 </p>
                 <p>
-                  Our mission is to make learning more accessible and enjoyable for everyone, from students
-                  preparing for exams to professionals documenting complex projects.
+                  Our mission is simple: make learning more effective and enjoyable for everyone, whether you're
+                  a student preparing for exams or a professional documenting complex projects.
                 </p>
               </div>
             </div>
