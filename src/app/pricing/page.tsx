@@ -234,13 +234,13 @@ export default function PricingPage() {
             <div className="space-y-2 text-sm text-gray-600">
               <Link href="/about" className="block hover:text-gray-900 transition-colors duration-200">About</Link>
               <a href="#" className="block hover:text-gray-900 transition-colors duration-200">Blog</a>
-              <a href="#" className="block hover:text-gray-900 transition-colors duration-200">Contact</a>
+              <Link href="/contact" className="block hover:text-gray-900 transition-colors duration-200">Contact</Link>
             </div>
           </div>
           <div>
             <h4 className="font-medium text-gray-900 mb-4">Support</h4>
             <div className="space-y-2 text-sm text-gray-600">
-              <a href="#" className="block hover:text-gray-900 transition-colors duration-200">Help Center</a>
+              <a href="mailto:support@notopy.com" className="block hover:text-gray-900 transition-colors duration-200">Help Center</a>
               <a href="#" className="block hover:text-gray-900 transition-colors duration-200">Documentation</a>
               <a href="#" className="block hover:text-gray-900 transition-colors duration-200">API</a>
             </div>

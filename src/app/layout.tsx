@@ -19,16 +19,17 @@ export const metadata: Metadata = {
   title: "Notopy - AI-Powered Note Generation",
   description: "Transform any topic into beautiful, colorful notes with hand-drawn elements using AI",
   keywords: ["AI notes", "note generation", "study notes", "AI writing", "note taking"],
-  authors: [{ name: "Notopy Team" }],
+  authors: [{ name: "Notopy Team", url: "https://notopy.com" }],
   creator: "Notopy",
   publisher: "Notopy",
   icons: {
     icon: [
-      { url: '/icon', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '16x16 32x32', type: 'image/x-icon' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
     ],
     apple: [
-      { url: '/apple-icon', sizes: '180x180', type: 'image/png' },
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
     shortcut: '/favicon.ico',
   },
@@ -64,6 +65,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.svg?v=2" />
+        <link rel="shortcut icon" href="/favicon.ico?v=2" />
+        <meta name="theme-color" content="#000000" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning

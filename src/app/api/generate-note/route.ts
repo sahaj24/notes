@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
         // Note was generated but DB operations failed - still return the note
         return NextResponse.json({
           noteHtml: generatedHtml,
-          warning: 'Note generated but payment processing had issues. Please contact support.'
+          warning: 'Note generated but payment processing had issues. Please contact support@notopy.com.'
         });
       }
     }

@@ -198,7 +198,7 @@ export const PayPalSubscription: React.FC<PayPalSubscriptionProps> = ({
           alert(`Payment successful! You have been credited ${coins} coins.`);
         } catch (error) {
           console.error('Error crediting coins:', error);
-          alert(`Payment successful but failed to credit coins. Please contact support with payment ID: ${paymentId}`);
+          alert(`Payment successful but failed to credit coins. Please contact support@notopy.com with payment ID: ${paymentId}`);
         }
       },
       onError: function(err: any) {

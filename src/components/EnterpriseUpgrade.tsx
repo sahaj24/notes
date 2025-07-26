@@ -13,7 +13,7 @@ export const EnterpriseUpgrade: React.FC = () => {
       `Hi,\n\nI'm interested in upgrading to the Enterprise plan for unlimited notes.\n\nUser: ${user?.email || 'Not logged in'}\n\nPlease contact me with pricing and setup details.\n\nThanks!`
     );
     
-    window.open(`mailto:sales@notopy.com?subject=${subject}&body=${body}`, '_blank');
+    window.open(`mailto:support@notopy.com?subject=${subject}&body=${body}`, '_blank');
   };
 
   return (
