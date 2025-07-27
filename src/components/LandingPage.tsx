@@ -396,8 +396,8 @@ export const LandingPage: React.FC = () => {
             </h1>
 
             <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-              Notopy uses advanced AI to generate visually stunning,
-              well-structured notes for students, researchers, and professionals.
+              Save valuable study time by generating comprehensive, exam-ready notes in seconds. 
+              Simply paste any topic and let our AI help you prepare for finals more efficiently.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">

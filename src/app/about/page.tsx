@@ -216,16 +216,16 @@ export default function AboutPage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12 pt-16 md:py-24 md:pt-32">
         <div className="max-w-5xl mx-auto text-center mb-12 md:mb-20">
           <div className="inline-block bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
-            📚 Finals season? We've got you covered
+            📚 Finals season? We're here to help
           </div>
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 md:mb-8 leading-tight">
-            Studying for finals?
+            Preparing for finals?
             <br />
-            <span className="text-blue-600">Paste your topic → Get notes in seconds</span>
+            <span className="text-blue-600">Let us help you study smarter</span>
           </h1>
           <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-8">
-            Stop spending hours making notes. Just paste any topic and get beautiful, comprehensive study notes instantly. 
-            Perfect for cramming, reviewing, or understanding complex subjects.
+            Save valuable study time with our AI-powered note generation. Simply paste any topic and receive beautiful, comprehensive study notes instantly.
+            Perfect for reviewing, understanding, and mastering complex subjects.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link href="/signup" className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200 hover:scale-105 text-lg">
@@ -244,16 +244,16 @@ export default function AboutPage() {
               <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-4 md:mb-6">Why we built this</h2>
               <div className="space-y-4 text-base md:text-lg text-gray-600 leading-relaxed">
                 <p>
-                  <strong>The problem:</strong> Students waste 3-5 hours making notes for each subject. 
-                  That's time you could spend actually studying or, you know, sleeping.
+                  <strong>The challenge:</strong> Many students spend 3-5 hours creating notes for each subject,
+                  which can be time-consuming during busy academic periods.
                 </p>
                 <p>
-                  <strong>Our solution:</strong> Paste any topic → Get comprehensive, well-organized notes in seconds. 
-                  No more staring at blank pages or struggling to organize information.
+                  <strong>Our approach:</strong> We've developed a tool that helps you generate comprehensive, well-organized notes in seconds.
+                  This allows you to focus more time on understanding and reviewing the material.
                 </p>
                 <p>
-                  <strong>The result:</strong> Thousands of students now ace their exams with less stress and more free time. 
-                  From organic chemistry to European history, Notopy handles it all.
+                  <strong>The outcome:</strong> Thousands of students have found success using Notopy to study more efficiently with reduced stress.
+                  From organic chemistry to European history, our platform supports learning across all subjects.
                 </p>
 
               </div>
@@ -262,7 +262,7 @@ export default function AboutPage() {
               <div className="text-center">
                 <div className="text-6xl mb-4">⚡</div>
                 <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">Save 20+ hours per week</h3>
-                <p className="text-sm md:text-base text-gray-600">Stop making notes manually. Get comprehensive study materials instantly.</p>
+                <p className="text-sm md:text-base text-gray-600">Transform your study routine with comprehensive materials generated instantly.</p>
                 <div className="mt-4 bg-white rounded-lg p-3 text-xs text-gray-500">
                   <div className="flex items-center justify-between mb-1">
                     <span>Manual notes:</span>
@@ -411,12 +411,12 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-24">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6">
-              Finals week is coming.
+              Ready to enhance
               <br />
-              <span className="text-blue-200">Are you ready?</span>
+              <span className="text-blue-200">your study experience?</span>
             </h2>
             <p className="text-base md:text-lg text-blue-100 mb-6 md:mb-8">
-              Don't waste another hour making notes manually. Join 10,000+ students who are already studying smarter.
+              Join 10,000+ students who have discovered a more efficient way to create study materials.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link href="/signup" className="bg-white text-blue-600 px-8 py-4 rounded-lg font-bold hover:bg-gray-50 transition-all duration-200 hover:scale-105 text-lg shadow-lg">
