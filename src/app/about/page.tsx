@@ -209,101 +209,122 @@ export default function AboutPage() {
   );
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white overflow-x-hidden">
       <Navigation />
 
       {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-6 py-24 pt-32">
-        <div className="max-w-4xl mx-auto text-center mb-20">
-          <h1 className="text-6xl font-light text-gray-900 mb-8 leading-tight">
-            About
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12 pt-16 md:py-24 md:pt-32">
+        <div className="max-w-5xl mx-auto text-center mb-12 md:mb-20">
+          <div className="inline-block bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+            📚 Finals season? We've got you covered
+          </div>
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 md:mb-8 leading-tight">
+            Studying for finals?
             <br />
-            <span className="font-medium">Notopy</span>
+            <span className="text-blue-600">Paste your topic → Get notes in seconds</span>
           </h1>
-          <p className="text-xl text-gray-600 leading-relaxed font-light">
-            We're revolutionizing note-taking with AI-powered tools that make learning more effective, engaging, and enjoyable.
+          <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-8">
+            Stop spending hours making notes. Just paste any topic and get beautiful, comprehensive study notes instantly. 
+            Perfect for cramming, reviewing, or understanding complex subjects.
           </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Link href="/signup" className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200 hover:scale-105 text-lg">
+              Try it free now
+            </Link>
+            <div className="text-sm text-gray-500">
+              ⚡ Get your first notes in under 30 seconds
+            </div>
+          </div>
         </div>
 
         {/* Our Story */}
-        <div className="mb-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+        <div className="mb-12 md:mb-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
             <div className="order-2 lg:order-1">
-              <h2 className="text-3xl font-light text-gray-900 mb-6">Our Story</h2>
-              <div className="space-y-4 text-lg text-gray-600 leading-relaxed">
+              <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-4 md:mb-6">Why we built this</h2>
+              <div className="space-y-4 text-base md:text-lg text-gray-600 leading-relaxed">
                 <p>
-                  We looked around and realized there weren't any good AI-powered note-making tools out there.
-                  So we decided to build one ourselves.
+                  <strong>The problem:</strong> Students waste 3-5 hours making notes for each subject. 
+                  That's time you could spend actually studying or, you know, sleeping.
                 </p>
                 <p>
-                  Notopy transforms any topic into beautiful, structured notes using advanced AI.
-                  We combine smart technology with clean design to create notes that are not just informative,
-                  but actually engaging and memorable.
+                  <strong>Our solution:</strong> Paste any topic → Get comprehensive, well-organized notes in seconds. 
+                  No more staring at blank pages or struggling to organize information.
                 </p>
                 <p>
-                  Our mission is simple: make learning more effective and enjoyable for everyone, whether you're
-                  a student preparing for exams or a professional documenting complex projects.
+                  <strong>The result:</strong> Thousands of students now ace their exams with less stress and more free time. 
+                  From organic chemistry to European history, Notopy handles it all.
                 </p>
+
               </div>
             </div>
-            <div className="order-1 lg:order-2 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 flex items-center justify-center">
+            <div className="order-1 lg:order-2 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 md:p-8 flex items-center justify-center">
               <div className="text-center">
-                <div className="w-24 h-24 bg-black rounded-full flex items-center justify-center mx-auto mb-6">
-                  <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
+                <div className="text-6xl mb-4">⚡</div>
+                <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">Save 20+ hours per week</h3>
+                <p className="text-sm md:text-base text-gray-600">Stop making notes manually. Get comprehensive study materials instantly.</p>
+                <div className="mt-4 bg-white rounded-lg p-3 text-xs text-gray-500">
+                  <div className="flex items-center justify-between mb-1">
+                    <span>Manual notes:</span>
+                    <span className="text-red-600 font-medium">4-5 hours</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>With Notopy:</span>
+                    <span className="text-green-600 font-medium">30 seconds</span>
+                  </div>
                 </div>
-                <h3 className="text-xl font-medium text-gray-900 mb-2">Innovation in Education</h3>
-                <p className="text-gray-600">Making learning more visual, engaging, and effective through AI technology.</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Our Values */}
-        <div className="mb-24">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-light text-gray-900 mb-4">
-              Our <span className="font-medium">Values</span>
+        {/* Why Students Love Notopy */}
+        <div className="mb-12 md:mb-24">
+          <div className="text-center mb-8 md:mb-12">
+            <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 mb-4">
+              Why students <span className="text-blue-600">love Notopy</span>
             </h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              The principles that guide everything we do at Notopy
+            <p className="text-base md:text-lg text-gray-600 max-w-3xl mx-auto">
+              Real benefits that make a difference during finals season
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-lg border border-gray-100 p-8 hover:shadow-lg transition-all duration-300">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-3 text-center">Innovation</h3>
-              <p className="text-gray-600 text-center">
-                We constantly push the boundaries of what's possible with AI and education technology.
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
+            <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 hover:shadow-lg transition-all duration-300">
+              <div className="text-4xl text-center mb-4">🚀</div>
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 text-center">Lightning Fast</h3>
+              <p className="text-sm md:text-base text-gray-600 text-center">
+                Get comprehensive notes in under 30 seconds. Perfect for last-minute cramming or quick reviews.
               </p>
+              <div className="mt-4 text-center">
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">
+                  Average: 15 seconds
+                </span>
+              </div>
             </div>
-            <div className="bg-white rounded-lg border border-gray-100 p-8 hover:shadow-lg transition-all duration-300">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-3 text-center">Accessibility</h3>
-              <p className="text-gray-600 text-center">
-                We believe powerful learning tools should be available to everyone, regardless of background or resources.
+            <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 hover:shadow-lg transition-all duration-300">
+              <div className="text-4xl text-center mb-4">🎯</div>
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 text-center">Exam-Ready Format</h3>
+              <p className="text-sm md:text-base text-gray-600 text-center">
+                Notes structured exactly how you need them for studying - with key points, definitions, and examples.
               </p>
+              <div className="mt-4 text-center">
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
+                  Study-optimized
+                </span>
+              </div>
             </div>
-            <div className="bg-white rounded-lg border border-gray-100 p-8 hover:shadow-lg transition-all duration-300">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-3 text-center">Quality</h3>
-              <p className="text-gray-600 text-center">
-                We're committed to creating notes that are not just beautiful but also accurate, comprehensive, and useful.
+            <div className="bg-white rounded-lg border border-gray-100 p-6 md:p-8 hover:shadow-lg transition-all duration-300">
+              <div className="text-4xl text-center mb-4">💰</div>
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-3 text-center">Student Budget</h3>
+              <p className="text-sm md:text-base text-gray-600 text-center">
+                Starting at just $4.99. Way cheaper than hiring a tutor or buying expensive study guides.
               </p>
+              <div className="mt-4 text-center">
+                <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-medium">
+                  Less than a coffee
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -311,69 +332,69 @@ export default function AboutPage() {
 
 
         {/* How It Works */}
-        <div className="mb-24">
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-12">
+        <div className="mb-12 md:mb-24">
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 md:p-12">
             <div className="max-w-3xl mx-auto">
-              <div className="text-center mb-12">
-                <h2 className="text-4xl font-light text-gray-900 mb-4">
+              <div className="text-center mb-8 md:mb-12">
+                <h2 className="text-3xl md:text-4xl font-light text-gray-900 mb-4">
                   How <span className="font-medium">it works</span>
                 </h2>
-                <p className="text-lg text-gray-600">
+                <p className="text-base md:text-lg text-gray-600">
                   Create beautiful notes in just a few simple steps
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white rounded-lg p-6 shadow-sm">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-medium">1</span>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
+                <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm">
+                  <div className="flex items-start space-x-3 md:space-x-4">
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-medium text-sm md:text-base">1</span>
                     </div>
                     <div>
-                      <h3 className="text-xl font-medium text-gray-900 mb-2">Enter your topic</h3>
-                      <p className="text-gray-600">
+                      <h3 className="text-lg md:text-xl font-medium text-gray-900 mb-2">Enter your topic</h3>
+                      <p className="text-sm md:text-base text-gray-600">
                         Simply type any subject you want to learn about or document. Our AI will analyze your topic and prepare to generate comprehensive notes.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-6 shadow-sm">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-medium">2</span>
+                <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm">
+                  <div className="flex items-start space-x-3 md:space-x-4">
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-medium text-sm md:text-base">2</span>
                     </div>
                     <div>
-                      <h3 className="text-xl font-medium text-gray-900 mb-2">Choose a template</h3>
-                      <p className="text-gray-600">
+                      <h3 className="text-lg md:text-xl font-medium text-gray-900 mb-2">Choose a template</h3>
+                      <p className="text-sm md:text-base text-gray-600">
                         Select from multiple note formats based on your needs, from creative collages to academic study guides to mind maps.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-6 shadow-sm">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-medium">3</span>
+                <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm">
+                  <div className="flex items-start space-x-3 md:space-x-4">
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-medium text-sm md:text-base">3</span>
                     </div>
                     <div>
-                      <h3 className="text-xl font-medium text-gray-900 mb-2">Generate your notes</h3>
-                      <p className="text-gray-600">
+                      <h3 className="text-lg md:text-xl font-medium text-gray-900 mb-2">Generate your notes</h3>
+                      <p className="text-sm md:text-base text-gray-600">
                         Our advanced AI creates beautiful, structured notes instantly, organizing information with proper hierarchy and visual elements.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-6 shadow-sm">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-medium">4</span>
+                <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm">
+                  <div className="flex items-start space-x-3 md:space-x-4">
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-medium text-sm md:text-base">4</span>
                     </div>
                     <div>
-                      <h3 className="text-xl font-medium text-gray-900 mb-2">Export and share</h3>
-                      <p className="text-gray-600">
+                      <h3 className="text-lg md:text-xl font-medium text-gray-900 mb-2">Export and share</h3>
+                      <p className="text-sm md:text-base text-gray-600">
                         Download your notes as PDF, PNG, or HTML files to study offline or share with classmates and colleagues.
                       </p>
                     </div>
@@ -386,20 +407,30 @@ export default function AboutPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="border-t border-gray-100 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-6 py-24">
+      <section className="border-t border-gray-100 bg-gradient-to-r from-blue-600 to-blue-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-24">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl font-light text-gray-900 mb-6">
-              Ready to transform
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6">
+              Finals week is coming.
               <br />
-              <span className="font-medium">your note-taking?</span>
+              <span className="text-blue-200">Are you ready?</span>
             </h2>
-            <p className="text-lg text-gray-600 mb-8">
-              Join thousands of users who have already discovered the power of AI-generated notes.
+            <p className="text-base md:text-lg text-blue-100 mb-6 md:mb-8">
+              Don't waste another hour making notes manually. Join 10,000+ students who are already studying smarter.
             </p>
-            <Link href="/signup" className="bg-black text-white px-8 py-4 rounded-md font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg">
-              Get started today
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link href="/signup" className="bg-white text-blue-600 px-8 py-4 rounded-lg font-bold hover:bg-gray-50 transition-all duration-200 hover:scale-105 text-lg shadow-lg">
+                Start studying smarter →
+              </Link>
+              <div className="text-blue-200 text-sm">
+                ✨ Free trial • No credit card required
+              </div>
+            </div>
+            <div className="mt-8 flex justify-center items-center space-x-8 text-blue-200 text-sm">
+              <div>⚡ 30-second setup</div>
+              <div>📚 Works for any subject</div>
+              <div>🎯 Exam-focused format</div>
+            </div>
           </div>
         </div>
       </section>
